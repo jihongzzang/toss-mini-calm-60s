@@ -1,18 +1,20 @@
 /** @jsxImportSource @emotion/react */
-import { css } from '@emotion/react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { Text } from '@toss/tds-mobile';
+import {css} from "@emotion/react";
+import {useState, useEffect} from "react";
+import {useLocation, useNavigate} from "react-router-dom";
+import {Text, Asset} from "@toss/tds-mobile";
+import {SafeAreaInsets} from "@apps-in-toss/web-bridge";
 
-const navStyle = css`
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 56px;
+const wrapperStyle = css`
+  flex-shrink: 0;
   background: #fff;
   border-top: 1px solid #f0f0f0;
+`;
+
+const navStyle = css`
+  height: 56px;
   display: flex;
-  z-index: 100;
+  align-items: center;
 `;
 
 const tabStyle = css`
@@ -21,84 +23,79 @@ const tabStyle = css`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 2px;
+  height: 100%;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 `;
 
-const activeColor = '#3182F6';
-const inactiveColor = '#8B95A1';
+const iconWrapStyle = css`
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
 
-interface TabItemProps {
-  label: string;
-  path: string;
-  icon: React.ReactNode;
-  isActive: boolean;
-  onClick: () => void;
-}
+const activeColor = "#3182F6";
+const inactiveColor = "#8B95A1";
 
-function TabItem({ label, icon, isActive, onClick }: TabItemProps) {
-  return (
-    <div css={tabStyle} onClick={onClick}>
-      <div style={{ color: isActive ? activeColor : inactiveColor }}>
-        {icon}
-      </div>
-      <Text
-        typography="t7"
-        style={{ color: isActive ? activeColor : inactiveColor }}
-      >
-        {label}
-      </Text>
-    </div>
-  );
-}
-
-// 간단한 아이콘 SVG
-function HomeIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 3L4 9v12h5v-7h6v7h5V9l-8-6z" />
-    </svg>
-  );
-}
-
-function HistoryIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17v-6H7l5-7v6h4l-5 7z" />
-    </svg>
-  );
-}
+const TABS = [
+  {label: "홈", path: "/", icon: "icon-home-mono"},
+  {label: "기록", path: "/history", icon: "icon-chart-mono"},
+] as const;
 
 export default function BottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
+  const [bottomInset, setBottomInset] = useState(() => {
+    try {
+      return SafeAreaInsets.get().bottom;
+    } catch {
+      return 0;
+    }
+  });
 
-  // 플로우 화면에서는 탭 숨김
-  const hideNavPaths = ['/mode-select', '/session', '/complete'];
-  const shouldHide = hideNavPaths.some(path => location.pathname.startsWith(path));
+  useEffect(() => {
+    const unsubscribe = SafeAreaInsets.subscribe({
+      onEvent: (insets) => {
+        setBottomInset(insets.bottom);
+      },
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  const hideNavPaths = ["/mode-select", "/session", "/complete"];
+  const shouldHide = hideNavPaths.some((path) => location.pathname.startsWith(path));
 
   if (shouldHide) {
     return null;
   }
 
-  const tabs = [
-    { label: '홈', path: '/', icon: <HomeIcon /> },
-    { label: '기록', path: '/history', icon: <HistoryIcon /> },
-  ];
-
   return (
-    <nav css={navStyle} className="bottom-nav">
-      {tabs.map(tab => (
-        <TabItem
-          key={tab.path}
-          label={tab.label}
-          path={tab.path}
-          icon={tab.icon}
-          isActive={location.pathname === tab.path}
-          onClick={() => navigate(tab.path)}
-        />
-      ))}
-    </nav>
+    <div css={wrapperStyle} className="bottom-nav">
+      <nav css={navStyle}>
+        {TABS.map((tab) => {
+          const isActive = location.pathname === tab.path;
+          const color = isActive ? activeColor : inactiveColor;
+
+          return (
+            <div key={tab.path} css={tabStyle} onClick={() => navigate(tab.path)}>
+              <div css={iconWrapStyle}>
+                <Asset.Icon name={tab.icon} color={color} frameShape={Asset.frameShape.CleanW24} />
+              </div>
+              <Text typography="t7" color={color}>
+                {tab.label}
+              </Text>
+            </div>
+          );
+        })}
+      </nav>
+      {bottomInset > 0 && <div style={{height: bottomInset}} />}
+    </div>
   );
 }

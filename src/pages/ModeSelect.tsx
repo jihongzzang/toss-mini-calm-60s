@@ -1,8 +1,9 @@
 /** @jsxImportSource @emotion/react */
-import { css } from '@emotion/react';
+import { css, keyframes } from '@emotion/react';
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Text, Button } from '@toss/tds-mobile';
+import { Text, Button, Asset } from '@toss/tds-mobile';
+import { haptic } from '../utils/haptic';
 import {
   Mood,
   MissionMode,
@@ -11,10 +12,24 @@ import {
   MOOD_RECOMMENDED_MISSION,
 } from '../types';
 
+const fadeSlideIn = keyframes`
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+`;
+
+/* bounceSelect는 transform transition으로 대체 — animation 충돌 방지 */
+
+const badgePulse = keyframes`
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+`;
+
 const containerStyle = css`
   padding: 24px 20px;
-  min-height: 100vh;
+  min-height: 100%;
   background: #fff;
+  display: flex;
+  flex-direction: column;
 `;
 
 const headerStyle = css`
@@ -36,6 +51,7 @@ const backButtonStyle = css`
 
 const titleStyle = css`
   margin-bottom: 24px;
+  animation: ${fadeSlideIn} 0.4s ease-out;
 `;
 
 const missionListStyle = css`
@@ -50,7 +66,7 @@ const missionCardStyle = (isSelected: boolean, isRecommended: boolean) => css`
   border: 2px solid ${isSelected ? '#3182F6' : '#E5E8EB'};
   background: ${isSelected ? '#F2F7FF' : '#fff'};
   cursor: pointer;
-  transition: all 0.2s;
+  transition: transform 0.2s ease-out, border-color 0.2s, background 0.2s;
   position: relative;
   -webkit-tap-highlight-color: transparent;
 
@@ -58,10 +74,6 @@ const missionCardStyle = (isSelected: boolean, isRecommended: boolean) => css`
     border-color: #B8D4FF;
     background: #FAFCFF;
   `}
-
-  &:active {
-    transform: scale(0.98);
-  }
 `;
 
 const recommendBadgeStyle = css`
@@ -71,6 +83,26 @@ const recommendBadgeStyle = css`
   padding: 4px 8px;
   background: #3182F6;
   border-radius: 6px;
+  animation: ${badgePulse} 2s ease-in-out infinite;
+`;
+
+const missionCardContentStyle = css`
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+`;
+
+const missionIconEmojiStyle = css`
+  font-size: 22px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const missionTextStyle = css`
+  flex: 1;
+  min-width: 0;
 `;
 
 const missionLabelStyle = css`
@@ -78,19 +110,11 @@ const missionLabelStyle = css`
 `;
 
 const ctaStyle = css`
-  position: fixed;
-  bottom: 24px;
-  left: 20px;
-  right: 20px;
+  margin-top: auto;
+  padding-top: 24px;
+  padding-bottom: 24px;
 `;
 
-function BackIcon() {
-  return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="#333D4B">
-      <path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
-    </svg>
-  );
-}
 
 export default function ModeSelect() {
   const navigate = useNavigate();
@@ -99,20 +123,33 @@ export default function ModeSelect() {
   const recommendedMode = MOOD_RECOMMENDED_MISSION[mood];
 
   const [selectedMode, setSelectedMode] = useState<MissionMode>(recommendedMode);
+  const [animatingMode, setAnimatingMode] = useState<MissionMode | null>(null);
+
+  const handleModeSelect = (mode: MissionMode) => {
+    haptic.light();
+    setSelectedMode(mode);
+    setAnimatingMode(mode);
+    setTimeout(() => setAnimatingMode(null), 300);
+  };
 
   const handleStart = () => {
+    haptic.medium();
     navigate('/session', {
       state: { mood, mode: selectedMode }
     });
   };
 
-  const modes: MissionMode[] = ['slow_tap', 'hold_release', 'grounding_321'];
+  const modes: MissionMode[] = ['slow_tap', 'hold_release', 'grounding_321', 'rapid_tap'];
 
   return (
     <div css={containerStyle}>
       <div css={headerStyle}>
         <div css={backButtonStyle} onClick={() => navigate(-1)}>
-          <BackIcon />
+          <Asset.Icon
+            name="icon-arrow-left-mono"
+            color="#333D4B"
+            frameShape={Asset.frameShape.CleanW24}
+          />
         </div>
         <Text typography="t6" color="#6B7684">
           {MOOD_LABELS[mood]}
@@ -126,7 +163,7 @@ export default function ModeSelect() {
       </div>
 
       <div css={missionListStyle}>
-        {modes.map((mode) => {
+        {modes.map((mode, index) => {
           const info = MISSION_INFO[mode];
           const isSelected = selectedMode === mode;
           const isRecommended = mode === recommendedMode;
@@ -134,8 +171,12 @@ export default function ModeSelect() {
           return (
             <div
               key={mode}
-              css={missionCardStyle(isSelected, isRecommended)}
-              onClick={() => setSelectedMode(mode)}
+              css={[
+                missionCardStyle(isSelected, isRecommended),
+                css`animation: ${fadeSlideIn} 0.4s ease-out ${0.1 + index * 0.1}s both;`,
+                animatingMode === mode && css`transform: scale(0.97);`,
+              ]}
+              onClick={() => handleModeSelect(mode)}
             >
               {isRecommended && (
                 <div css={recommendBadgeStyle}>
@@ -144,18 +185,27 @@ export default function ModeSelect() {
                   </Text>
                 </div>
               )}
-              <div css={missionLabelStyle}>
-                <Text
-                  typography="t4"
-                  fontWeight="bold"
-                  color={isSelected ? '#3182F6' : '#333D4B'}
-                >
-                  {info.label}
-                </Text>
+              <div css={missionCardContentStyle}>
+                <Asset.Frame
+                  shape={Asset.frameShape.SquircleLarge}
+                  backgroundColor={isSelected ? '#E8F3FF' : '#F2F4F6'}
+                  content={<span css={missionIconEmojiStyle}>{info.icon}</span>}
+                />
+                <div css={missionTextStyle}>
+                  <div css={missionLabelStyle}>
+                    <Text
+                      typography="t4"
+                      fontWeight="bold"
+                      color={isSelected ? '#3182F6' : '#333D4B'}
+                    >
+                      {info.label}
+                    </Text>
+                  </div>
+                  <Text typography="t6" color="#6B7684">
+                    {info.description}
+                  </Text>
+                </div>
               </div>
-              <Text typography="t6" color="#6B7684">
-                {info.description}
-              </Text>
             </div>
           );
         })}

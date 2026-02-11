@@ -1,24 +1,40 @@
 /** @jsxImportSource @emotion/react */
-import { css } from '@emotion/react';
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Text, Button } from '@toss/tds-mobile';
-import { loadData } from '../stores/storage';
-import {
-  Mood,
-  MOOD_LABELS,
-  MOOD_RECOMMENDED_MISSION,
-  MISSION_INFO
-} from '../types';
+import {css, keyframes} from "@emotion/react";
+import {useState, useEffect, useRef} from "react";
+import {useNavigate} from "react-router-dom";
+import {Text, Button, Asset, AlertDialog} from "@toss/tds-mobile";
+import {loadData} from "../stores/storage";
+import {useCountUp} from "../hooks/useCountUp";
+import {haptic} from "../utils/haptic";
+import {Mood, MOOD_LABELS, MOOD_ICONS, MOOD_RECOMMENDED_MISSION, MISSION_INFO} from "../types";
+
+const fadeSlideIn = keyframes`
+  0% { opacity: 0; transform: translateY(16px); }
+  100% { opacity: 1; transform: translateY(0); }
+`;
+
+const bounceSelect = keyframes`
+  0% { transform: scale(1); }
+  40% { transform: scale(0.92); }
+  70% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+`;
 
 const containerStyle = css`
   padding: 24px 20px;
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
   background: #fff;
 `;
 
 const titleStyle = css`
   margin-bottom: 32px;
+  animation: ${fadeSlideIn} 0.6s ease-out;
+`;
+
+const subtitleStyle = css`
+  animation: ${fadeSlideIn} 0.6s ease-out 0.1s both;
 `;
 
 const sectionStyle = css`
@@ -33,53 +49,83 @@ const moodGridStyle = css`
 `;
 
 const moodButtonStyle = (isSelected: boolean) => css`
-  padding: 16px 12px;
+  padding: 14px 12px;
   border-radius: 12px;
-  border: 1.5px solid ${isSelected ? '#3182F6' : '#E5E8EB'};
-  background: ${isSelected ? '#F2F7FF' : '#fff'};
+  border: 1.5px solid ${isSelected ? "#3182F6" : "#E5E8EB"};
+  background: ${isSelected ? "#F2F7FF" : "#fff"};
   text-align: center;
   cursor: pointer;
-  transition: all 0.2s;
+  transition:
+    border-color 0.2s,
+    background 0.2s,
+    transform 0.2s;
   -webkit-tap-highlight-color: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+`;
 
-  &:active {
-    transform: scale(0.97);
-  }
+const moodEmojiStyle = css`
+  font-size: 20px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 const recommendStyle = css`
   margin-top: 16px;
+  margin-bottom: 24px;
   padding: 16px;
-  background: #F8F9FA;
+  background: #f8f9fa;
   border-radius: 12px;
+  animation: ${fadeSlideIn} 0.3s ease-out;
 `;
 
 const statsStyle = css`
   display: flex;
-  gap: 16px;
-  margin-top: 12px;
+  gap: 12px;
+  margin-top: 16px;
 `;
 
 const statItemStyle = css`
   flex: 1;
-  padding: 16px;
-  background: #F8F9FA;
+  padding: 20px 16px;
+  background: #f8f9fa;
   border-radius: 12px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 `;
 
 const ctaStyle = css`
-  position: fixed;
-  bottom: 76px;
-  left: 20px;
-  right: 20px;
+  margin-top: auto;
+  padding-top: 24px;
+  padding-bottom: 12px;
 `;
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 6) return "늦은 밤이에요, 마음을 달래볼까요?";
+  if (hour < 12) return "좋은 아침이에요";
+  if (hour < 18) return "오후도 힘내볼까요?";
+  if (hour < 22) return "오늘 하루 수고했어요";
+  return "편안한 밤이에요";
+}
 
 export default function Home() {
   const navigate = useNavigate();
   const [selectedMood, setSelectedMood] = useState<Mood | null>(null);
   const [todayCount, setTodayCount] = useState(0);
   const [streak, setStreak] = useState(0);
+  const [animatingMood, setAnimatingMood] = useState<Mood | null>(null);
+  const [showAlert, setShowAlert] = useState(false);
+  const prevMoodRef = useRef<Mood | null>(null);
+
+  const animatedTodayCount = useCountUp(todayCount);
+  const animatedStreak = useCountUp(streak);
 
   useEffect(() => {
     const data = loadData();
@@ -87,46 +133,81 @@ export default function Home() {
     setStreak(data.streak);
   }, []);
 
+  const handleMoodSelect = (mood: Mood) => {
+    haptic.light();
+    const next = selectedMood === mood ? null : mood;
+    setSelectedMood(next);
+
+    if (next && mood !== prevMoodRef.current) {
+      setAnimatingMood(mood);
+      setTimeout(() => setAnimatingMood(null), 300);
+    }
+    prevMoodRef.current = next;
+  };
+
   const handleStart = () => {
     if (!selectedMood) {
-      alert('감정을 선택해 주세요');
+      setShowAlert(true);
       return;
     }
-    navigate('/mode-select', {
-      state: { mood: selectedMood }
+    haptic.medium();
+    navigate("/mode-select", {
+      state: {mood: selectedMood},
     });
   };
 
-  const recommendedMission = selectedMood
-    ? MISSION_INFO[MOOD_RECOMMENDED_MISSION[selectedMood]]
-    : null;
+  const recommendedMission = selectedMood ? MISSION_INFO[MOOD_RECOMMENDED_MISSION[selectedMood]] : null;
 
-  const moods: Mood[] = ['anxiety', 'anger', 'lethargy', 'focus', 'tension', 'down'];
+  const moods: Mood[] = ["anxiety", "anger", "lethargy", "focus", "tension", "down"];
 
   return (
-    <div css={containerStyle} className="page-container">
+    <div css={containerStyle}>
       <div css={titleStyle}>
-        <Text typography="t2" fontWeight="bold">
-          지금, 60초만 리셋
+        <Text typography="t4" color="#6B7684">
+          {getGreeting()}
         </Text>
+        <div css={subtitleStyle}>
+          <Text typography="t2" fontWeight="bold" style={{marginTop: 4}}>
+            지금, 60초만 리셋
+          </Text>
+        </div>
       </div>
 
       <div css={sectionStyle}>
-        <Text typography="t5" fontWeight="medium" color="#6B7684">
-          지금 기분이 어때요?
-        </Text>
+        <div
+          css={css`
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          `}
+        >
+          <Asset.Icon name="icon-emoji-mono" color="#6B7684" frameShape={Asset.frameShape.CleanW20} />
+          <Text typography="t5" fontWeight="medium" color="#6B7684">
+            지금 기분이 어때요?
+          </Text>
+        </div>
         <div css={moodGridStyle}>
-          {moods.map((mood) => (
+          {moods.map((mood, index) => (
             <div
               key={mood}
-              css={moodButtonStyle(selectedMood === mood)}
-              onClick={() => setSelectedMood(mood)}
+              css={[
+                moodButtonStyle(selectedMood === mood),
+                animatingMood === mood &&
+                  css`
+                    animation: ${bounceSelect} 0.3s ease-out;
+                  `,
+                css`
+                  animation: ${fadeSlideIn} 0.3s ease-out ${0.1 + index * 0.05}s both;
+                `,
+              ]}
+              onClick={() => handleMoodSelect(mood)}
             >
-              <Text
-                typography="t6"
-                fontWeight={selectedMood === mood ? 'bold' : 'medium'}
-                color={selectedMood === mood ? '#3182F6' : '#333D4B'}
-              >
+              <Asset.Frame
+                shape={Asset.frameShape.CircleMedium}
+                backgroundColor={selectedMood === mood ? "#E8F3FF" : "#F8F9FA"}
+                content={<span css={moodEmojiStyle}>{MOOD_ICONS[mood]}</span>}
+              />
+              <Text typography="t7" fontWeight={selectedMood === mood ? "bold" : "medium"} color={selectedMood === mood ? "#3182F6" : "#333D4B"}>
                 {MOOD_LABELS[mood]}
               </Text>
             </div>
@@ -136,49 +217,90 @@ export default function Home() {
 
       {recommendedMission && (
         <div css={recommendStyle}>
-          <Text typography="t7" color="#6B7684">
-            추천 모드
-          </Text>
-          <Text typography="t5" fontWeight="bold" style={{ marginTop: 4 }}>
-            {recommendedMission.label}
-          </Text>
+          <div
+            css={css`
+              display: flex;
+              align-items: center;
+              gap: 4px;
+            `}
+          >
+            <Asset.Icon name="icon-star-mono" color="#6B7684" frameShape={Asset.frameShape.CleanW16} />
+            <Text typography="t7" color="#6B7684">
+              추천 모드
+            </Text>
+          </div>
+          <div
+            css={css`
+              display: flex;
+              align-items: center;
+              gap: 10px;
+              margin-top: 8px;
+            `}
+          >
+            <Asset.Frame
+              shape={Asset.frameShape.SquircleSmall}
+              backgroundColor="#E8F3FF"
+              content={<span style={{fontSize: 16}}>{recommendedMission.icon}</span>}
+            />
+            <Text typography="t5" fontWeight="bold">
+              {recommendedMission.label}
+            </Text>
+          </div>
         </div>
       )}
 
       <div css={sectionStyle}>
-        <Text typography="t5" fontWeight="medium" color="#6B7684">
-          오늘 통계
-        </Text>
+        <div
+          css={css`
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          `}
+        >
+          <Asset.Icon name="icon-chart-mono" color="#6B7684" frameShape={Asset.frameShape.CleanW20} />
+          <Text typography="t5" fontWeight="medium" color="#6B7684">
+            오늘 통계
+          </Text>
+        </div>
         <div css={statsStyle}>
           <div css={statItemStyle}>
-            <Text typography="t3" fontWeight="bold" color="#3182F6">
-              {todayCount}회
-            </Text>
-            <Text typography="t7" color="#8B95A1" style={{ marginTop: 4 }}>
+            <Asset.Icon name="icon-check-circle-mono" color="#8B95A1" frameShape={Asset.frameShape.CleanW24} />
+            <Text typography="t7" color="#8B95A1">
               오늘 완료
+            </Text>
+            <Text typography="t3" fontWeight="bold" color="#3182F6">
+              {animatedTodayCount}회
             </Text>
           </div>
           <div css={statItemStyle}>
-            <Text typography="t3" fontWeight="bold" color="#3182F6">
-              {streak}일
-            </Text>
-            <Text typography="t7" color="#8B95A1" style={{ marginTop: 4 }}>
+            <Asset.Icon name="icon-trophy-mono" color="#8B95A1" frameShape={Asset.frameShape.CleanW24} />
+            <Text typography="t7" color="#8B95A1">
               연속
+            </Text>
+            <Text typography="t3" fontWeight="bold" color="#3182F6">
+              {animatedStreak}일
             </Text>
           </div>
         </div>
       </div>
-
       <div css={ctaStyle}>
-        <Button
-          display="block"
-          size="xlarge"
-          color="primary"
-          onClick={handleStart}
-        >
+        <Button display="block" size="xlarge" color="primary" onClick={handleStart}>
           시작
         </Button>
       </div>
+      <div style={{minHeight: "48px"}} />
+
+      <AlertDialog
+        open={showAlert}
+        onClose={() => setShowAlert(false)}
+        title="감정을 선택해 주세요"
+        description="기분에 맞는 모드를 추천해 줄게요"
+        alertButton={
+          <AlertDialog.AlertButton onClick={() => setShowAlert(false)}>
+            확인
+          </AlertDialog.AlertButton>
+        }
+      />
     </div>
   );
 }

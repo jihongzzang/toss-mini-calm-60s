@@ -1,14 +1,17 @@
 /** @jsxImportSource @emotion/react */
-import { css } from '@emotion/react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Text } from '@toss/tds-mobile';
-import { Mood, MissionMode, MOOD_LABELS, MISSION_INFO } from '../types';
-import SlowTapMission from '../components/missions/SlowTapMission';
-import GroundingMission from '../components/missions/GroundingMission';
-import HoldReleaseMission from '../components/missions/HoldReleaseMission';
+import {css} from "@emotion/react";
+import {useNavigate, useLocation} from "react-router-dom";
+import {useState} from "react";
+import {Text, ConfirmDialog} from "@toss/tds-mobile";
+import {Mood, MissionMode, MOOD_LABELS, MISSION_INFO} from "../types";
+import SessionTimer from "../components/SessionTimer";
+import SlowTapMission from "../components/missions/SlowTapMission";
+import GroundingMission from "../components/missions/GroundingMission";
+import HoldReleaseMission from "../components/missions/HoldReleaseMission";
+import RapidTapMission from "../components/missions/RapidTapMission";
 
 const containerStyle = css`
-  min-height: 100vh;
+  min-height: 100%;
   background: #fff;
   display: flex;
   flex-direction: column;
@@ -19,7 +22,7 @@ const headerStyle = css`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #F0F0F0;
+  border-bottom: 1px solid #f0f0f0;
 `;
 
 const headerLeftStyle = css`
@@ -55,29 +58,31 @@ function CloseIcon() {
 export default function Session() {
   const navigate = useNavigate();
   const location = useLocation();
-  const mood = (location.state?.mood as Mood) || 'anxiety';
-  const mode = (location.state?.mode as MissionMode) || 'slow_tap';
+  const mood = (location.state?.mood as Mood) || "anxiety";
+  const mode = (location.state?.mode as MissionMode) || "slow_tap";
+  const useTimer = mode !== "grounding_321";
+  const [showConfirm, setShowConfirm] = useState(false);
 
   const handleClose = () => {
-    if (confirm('세션을 중단하시겠어요?')) {
-      navigate('/');
-    }
+    setShowConfirm(true);
   };
 
   const handleComplete = () => {
-    navigate('/complete', {
-      state: { mood, mode }
+    navigate("/complete", {
+      state: {mood, mode},
     });
   };
 
   const renderMission = () => {
     switch (mode) {
-      case 'slow_tap':
+      case "slow_tap":
         return <SlowTapMission onComplete={handleComplete} />;
-      case 'hold_release':
+      case "hold_release":
         return <HoldReleaseMission onComplete={handleComplete} />;
-      case 'grounding_321':
+      case "grounding_321":
         return <GroundingMission onComplete={handleComplete} />;
+      case "rapid_tap":
+        return <RapidTapMission onComplete={handleComplete} />;
       default:
         return null;
     }
@@ -90,7 +95,9 @@ export default function Session() {
           <Text typography="t6" color="#6B7684">
             {MOOD_LABELS[mood]}
           </Text>
-          <Text typography="t6" color="#E5E8EB">|</Text>
+          <Text typography="t6" color="#E5E8EB">
+            |
+          </Text>
           <Text typography="t6" fontWeight="medium" color="#333D4B">
             {MISSION_INFO[mode].label}
           </Text>
@@ -100,9 +107,26 @@ export default function Session() {
         </div>
       </div>
 
-      <div css={contentStyle}>
-        {renderMission()}
-      </div>
+      {useTimer && <SessionTimer durationMs={60000} onTimeUp={handleComplete} isPaused={showConfirm} />}
+
+      <div css={contentStyle}>{renderMission()}</div>
+
+      <ConfirmDialog
+        open={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        title="세션을 중단할래요?"
+        description="지금까지의 진행은 저장되지 않아요"
+        confirmButton={
+          <ConfirmDialog.ConfirmButton onClick={() => navigate("/")}>
+            중단하기
+          </ConfirmDialog.ConfirmButton>
+        }
+        cancelButton={
+          <ConfirmDialog.CancelButton onClick={() => setShowConfirm(false)}>
+            계속하기
+          </ConfirmDialog.CancelButton>
+        }
+      />
     </div>
   );
 }

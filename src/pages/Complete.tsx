@@ -1,9 +1,10 @@
 /** @jsxImportSource @emotion/react */
-import { css } from '@emotion/react';
-import { useState } from 'react';
+import { css, keyframes } from '@emotion/react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Text, Button } from '@toss/tds-mobile';
+import { Text, Button, Asset } from '@toss/tds-mobile';
 import { recordCompletion } from '../stores/storage';
+import { haptic } from '../utils/haptic';
 import {
   Mood,
   MissionMode,
@@ -11,32 +12,72 @@ import {
   COMPLETE_ACTIONS,
 } from '../types';
 
+const circleScaleIn = keyframes`
+  0% { transform: scale(0.5); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+`;
+
+
+const fadeUpIn = keyframes`
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+`;
+
+const particleBurst = keyframes`
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+`;
+
+const bounceSelect = keyframes`
+  0% { transform: scale(1); }
+  40% { transform: scale(0.95); }
+  70% { transform: scale(1.03); }
+  100% { transform: scale(1); }
+`;
+
 const containerStyle = css`
-  min-height: 100vh;
+  min-height: 100%;
   background: #fff;
   padding: 24px 20px;
   display: flex;
   flex-direction: column;
 `;
 
-const successIconStyle = css`
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: #E8F3FF;
+const successAreaStyle = css`
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 40px auto 24px;
 `;
 
+const successIconStyle = css`
+  animation: ${circleScaleIn} 0.4s ease-out;
+`;
+
+const confettiContainerStyle = css`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  pointer-events: none;
+`;
+
+const confettiDotStyle = css`
+  position: absolute;
+  border-radius: 50%;
+  animation: ${particleBurst} 0.8s ease-out forwards;
+`;
+
 const titleStyle = css`
   text-align: center;
   margin-bottom: 40px;
+  animation: ${fadeUpIn} 0.5s ease-out 0.6s both;
 `;
 
 const sectionStyle = css`
   margin-bottom: 24px;
+  animation: ${fadeUpIn} 0.5s ease-out 0.8s both;
 `;
 
 const actionListStyle = css`
@@ -63,8 +104,12 @@ const actionItemStyle = (isSelected: boolean) => css`
   }
 `;
 
-const actionIconStyle = css`
-  font-size: 24px;
+const actionIconEmojiStyle = css`
+  font-size: 18px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 const radioStyle = (isSelected: boolean) => css`
@@ -78,6 +123,7 @@ const radioStyle = (isSelected: boolean) => css`
   justify-content: center;
   margin-left: auto;
   flex-shrink: 0;
+  transition: all 0.2s;
 `;
 
 const ctaContainerStyle = css`
@@ -85,13 +131,47 @@ const ctaContainerStyle = css`
   display: flex;
   flex-direction: column;
   gap: 12px;
+  animation: ${fadeUpIn} 0.5s ease-out 1s both;
 `;
 
-function CheckIcon() {
+const ACTION_ICONS: Record<CompleteAction, string> = {
+  water: '💧',
+  window: '🪟',
+  walk: '👟',
+};
+
+const CONFETTI_COLORS = ['#3182F6', '#FF6B6B', '#FFD93D', '#6BCB77', '#B8D4FF'];
+
+
+function Confetti() {
+  const particles = useMemo(() =>
+    Array.from({ length: 24 }, (_, i) => ({
+      id: i,
+      tx: (Math.random() - 0.5) * 240,
+      ty: (Math.random() - 0.5) * 240,
+      size: 4 + Math.random() * 4,
+      color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+      delay: Math.random() * 0.3,
+    }))
+  , []);
+
   return (
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="#3182F6">
-      <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-    </svg>
+    <div css={confettiContainerStyle}>
+      {particles.map(p => (
+        <div
+          key={p.id}
+          css={confettiDotStyle}
+          style={{
+            width: p.size,
+            height: p.size,
+            background: p.color,
+            '--tx': `${p.tx}px`,
+            '--ty': `${p.ty}px`,
+            animationDelay: `${p.delay}s`,
+          } as React.CSSProperties}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -108,12 +188,6 @@ function InnerDot() {
   );
 }
 
-const ACTION_ICONS: Record<CompleteAction, string> = {
-  water: '💧',
-  window: '🪟',
-  walk: '👟',
-};
-
 export default function Complete() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -121,9 +195,22 @@ export default function Complete() {
   const mode = (location.state?.mode as MissionMode) || 'slow_tap';
 
   const [selectedAction, setSelectedAction] = useState<CompleteAction | null>(null);
+  const [animatingAction, setAnimatingAction] = useState<CompleteAction | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => haptic.confetti(), 300);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const handleActionSelect = (action: CompleteAction) => {
+    haptic.light();
+    setAnimatingAction(action);
+    setSelectedAction(selectedAction === action ? null : action);
+    setTimeout(() => setAnimatingAction(null), 300);
+  };
 
   const handleSave = () => {
-    // 완료 기록 저장
+    haptic.success();
     recordCompletion(mood, mode);
     navigate('/');
   };
@@ -138,8 +225,16 @@ export default function Complete() {
 
   return (
     <div css={containerStyle}>
-      <div css={successIconStyle}>
-        <CheckIcon />
+      <div css={successAreaStyle}>
+        <div css={successIconStyle}>
+          <Asset.Icon
+            name="icon-check-circle-mono"
+            color="#3182F6"
+            frameShape={{ width: 80, height: 80, radius: 9999 }}
+            backgroundColor="#E8F3FF"
+          />
+        </div>
+        <Confetti />
       </div>
 
       <div css={titleStyle}>
@@ -153,7 +248,7 @@ export default function Complete() {
 
       <div css={sectionStyle}>
         <Text typography="t5" fontWeight="medium" color="#333D4B">
-          마무리 액션을 선택해보세요
+          마무리로 뭘 해볼까요?
         </Text>
         <Text typography="t7" color="#8B95A1" style={{ marginTop: 4 }}>
           선택하지 않아도 괜찮아요
@@ -163,12 +258,17 @@ export default function Complete() {
           {actions.map(action => (
             <div
               key={action}
-              css={actionItemStyle(selectedAction === action)}
-              onClick={() => setSelectedAction(
-                selectedAction === action ? null : action
-              )}
+              css={[
+                actionItemStyle(selectedAction === action),
+                animatingAction === action && css`animation: ${bounceSelect} 0.3s ease-out;`,
+              ]}
+              onClick={() => handleActionSelect(action)}
             >
-              <span css={actionIconStyle}>{ACTION_ICONS[action]}</span>
+              <Asset.Frame
+                shape={Asset.frameShape.CircleLarge}
+                backgroundColor={selectedAction === action ? '#E8F3FF' : '#F8F9FA'}
+                content={<span css={actionIconEmojiStyle}>{ACTION_ICONS[action]}</span>}
+              />
               <Text
                 typography="t5"
                 fontWeight={selectedAction === action ? 'bold' : 'medium'}
@@ -191,7 +291,7 @@ export default function Complete() {
           color="primary"
           onClick={handleSave}
         >
-          완료 기록하기
+          기록 남기기
         </Button>
         <Button
           display="block"
