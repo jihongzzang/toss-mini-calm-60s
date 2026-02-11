@@ -254,7 +254,7 @@ export default function Complete() {
           선택하지 않아도 괜찮아요
         </Text>
 
-        <div css={actionListStyle}>
+        <div css={actionListStyle} role="radiogroup" aria-label="마무리 활동 선택">
           {actions.map(action => (
             <div
               key={action}
@@ -263,6 +263,9 @@ export default function Complete() {
                 animatingAction === action && css`animation: ${bounceSelect} 0.3s ease-out;`,
               ]}
               onClick={() => handleActionSelect(action)}
+              role="radio"
+              aria-checked={selectedAction === action}
+              aria-label={`${ACTION_ICONS[action]} ${COMPLETE_ACTIONS[action]}`}
             >
               <Asset.Frame
                 shape={Asset.frameShape.CircleLarge}

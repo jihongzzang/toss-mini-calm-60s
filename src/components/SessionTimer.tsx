@@ -102,8 +102,8 @@ export default function SessionTimer({
   const center = size / 2;
 
   return (
-    <div css={timerContainerStyle}>
-      <svg width={size} height={size} viewBox={viewBox} css={svgStyle}>
+    <div css={timerContainerStyle} role="timer" aria-label={`남은 시간 ${timeStr}`}>
+      <svg width={size} height={size} viewBox={viewBox} css={svgStyle} aria-hidden="true">
         <circle
           cx={center}
           cy={center}

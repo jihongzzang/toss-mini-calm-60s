@@ -434,6 +434,10 @@ export default function GroundingMission({ onComplete }: GroundingMissionProps) 
                         handleSelect(section.id, option);
                       }
                     }}
+                    role="checkbox"
+                    aria-checked={isSelected}
+                    aria-disabled={!isActive || isSelected}
+                    aria-label={option}
                   >
                     <Text
                       typography="t6"

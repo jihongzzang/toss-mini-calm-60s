@@ -313,6 +313,8 @@ export default function HoldReleaseMission({ onComplete }: HoldReleaseMissionPro
           onMouseLeave={handlePressEnd}
           onTouchStart={handlePressStart}
           onTouchEnd={handlePressEnd}
+          role="button"
+          aria-label={`꾹 누르기 ${count}/${TARGET_COUNT}`}
         >
           <div css={gaugeBackgroundStyle} />
           <div css={gaugeStyle(displayProgress, phase === 'holding', holdColor)} />

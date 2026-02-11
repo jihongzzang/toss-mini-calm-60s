@@ -102,7 +102,7 @@ export default function Session() {
             {MISSION_INFO[mode].label}
           </Text>
         </div>
-        <div css={closeButtonStyle} onClick={handleClose}>
+        <div css={closeButtonStyle} onClick={handleClose} role="button" aria-label="세션 중단하기">
           <CloseIcon />
         </div>
       </div>

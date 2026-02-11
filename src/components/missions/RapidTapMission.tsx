@@ -336,7 +336,7 @@ export default function RapidTapMission({ onComplete }: RapidTapMissionProps) {
         )}
       </div>
 
-      <div css={tapZoneStyle(intensity)} onClick={handleTap}>
+      <div css={tapZoneStyle(intensity)} onClick={handleTap} role="button" aria-label={`빠르게 터치 ${count}탭`}>
         {ripples.map(ripple => (
           <div key={ripple.id} css={rippleStyle} />
         ))}

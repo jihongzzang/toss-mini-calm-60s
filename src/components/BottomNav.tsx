@@ -78,13 +78,20 @@ export default function BottomNav() {
 
   return (
     <div css={wrapperStyle} className="bottom-nav">
-      <nav css={navStyle}>
+      <nav css={navStyle} aria-label="하단 탭 메뉴">
         {TABS.map((tab) => {
           const isActive = location.pathname === tab.path;
           const color = isActive ? activeColor : inactiveColor;
 
           return (
-            <div key={tab.path} css={tabStyle} onClick={() => navigate(tab.path)}>
+            <div
+              key={tab.path}
+              css={tabStyle}
+              onClick={() => navigate(tab.path)}
+              role="tab"
+              aria-selected={isActive}
+              aria-label={tab.label}
+            >
               <div css={iconWrapStyle}>
                 <Asset.Icon name={tab.icon} color={color} frameShape={Asset.frameShape.CleanW24} />
               </div>

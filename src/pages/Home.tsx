@@ -186,7 +186,7 @@ export default function Home() {
             지금 기분이 어때요?
           </Text>
         </div>
-        <div css={moodGridStyle}>
+        <div css={moodGridStyle} role="radiogroup" aria-label="현재 기분 선택">
           {moods.map((mood, index) => (
             <div
               key={mood}
@@ -201,6 +201,9 @@ export default function Home() {
                 `,
               ]}
               onClick={() => handleMoodSelect(mood)}
+              role="radio"
+              aria-checked={selectedMood === mood}
+              aria-label={`${MOOD_ICONS[mood]} ${MOOD_LABELS[mood]}`}
             >
               <Asset.Frame
                 shape={Asset.frameShape.CircleMedium}

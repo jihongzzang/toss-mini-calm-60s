@@ -1,14 +1,17 @@
 /** @jsxImportSource @emotion/react */
 import {css, keyframes} from "@emotion/react";
+import {lazy, Suspense} from "react";
 import {Routes, Route, useLocation} from "react-router-dom";
 import {ThemeProvider} from "@toss/tds-mobile";
+import ErrorBoundary from "./components/ErrorBoundary";
 import BottomNav from "./components/BottomNav";
-import Home from "./pages/Home";
-import ModeSelect from "./pages/ModeSelect";
-import Session from "./pages/Session";
-import Complete from "./pages/Complete";
-import History from "./pages/History";
 import {TDSMobileAITProvider} from "@toss/tds-mobile-ait";
+
+const Home = lazy(() => import("./pages/Home"));
+const ModeSelect = lazy(() => import("./pages/ModeSelect"));
+const Session = lazy(() => import("./pages/Session"));
+const Complete = lazy(() => import("./pages/Complete"));
+const History = lazy(() => import("./pages/History"));
 
 const appLayoutStyle = css`
   display: flex;
@@ -41,15 +44,19 @@ export default function App() {
       <ThemeProvider>
         <div css={appLayoutStyle}>
           <div css={contentAreaStyle}>
-            <div key={location.pathname} css={pageTransitionStyle}>
-              <Routes location={location}>
-                <Route path="/" element={<Home />} />
-                <Route path="/mode-select" element={<ModeSelect />} />
-                <Route path="/session" element={<Session />} />
-                <Route path="/complete" element={<Complete />} />
-                <Route path="/history" element={<History />} />
-              </Routes>
-            </div>
+            <ErrorBoundary>
+              <Suspense fallback={null}>
+                <div key={location.pathname} css={pageTransitionStyle}>
+                  <Routes location={location}>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/mode-select" element={<ModeSelect />} />
+                    <Route path="/session" element={<Session />} />
+                    <Route path="/complete" element={<Complete />} />
+                    <Route path="/history" element={<History />} />
+                  </Routes>
+                </div>
+              </Suspense>
+            </ErrorBoundary>
           </div>
           <BottomNav />
         </div>

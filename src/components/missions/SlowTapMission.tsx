@@ -222,7 +222,7 @@ export default function SlowTapMission({ onComplete }: SlowTapMissionProps) {
       </div>
 
       <div css={tapAreaStyle}>
-        <div css={tapButtonStyle(canTap, progressColor)} onClick={canTap ? handleTap : undefined}>
+        <div css={tapButtonStyle(canTap, progressColor)} onClick={canTap ? handleTap : undefined} role="button" aria-label={`천천히 터치 ${count}/${TARGET_COUNT}`}>
           {ripples.map(ripple => (
             <div key={ripple.id} css={rippleStyle} />
           ))}

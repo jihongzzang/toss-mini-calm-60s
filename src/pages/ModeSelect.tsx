@@ -144,7 +144,7 @@ export default function ModeSelect() {
   return (
     <div css={containerStyle}>
       <div css={headerStyle}>
-        <div css={backButtonStyle} onClick={() => navigate(-1)}>
+        <div css={backButtonStyle} onClick={() => navigate(-1)} role="button" aria-label="뒤로 가기">
           <Asset.Icon
             name="icon-arrow-left-mono"
             color="#333D4B"
@@ -162,7 +162,7 @@ export default function ModeSelect() {
         </Text>
       </div>
 
-      <div css={missionListStyle}>
+      <div css={missionListStyle} role="radiogroup" aria-label="미션 모드 선택">
         {modes.map((mode, index) => {
           const info = MISSION_INFO[mode];
           const isSelected = selectedMode === mode;
@@ -177,6 +177,9 @@ export default function ModeSelect() {
                 animatingMode === mode && css`transform: scale(0.97);`,
               ]}
               onClick={() => handleModeSelect(mode)}
+              role="radio"
+              aria-checked={isSelected}
+              aria-label={`${info.label} - ${info.description}${isRecommended ? ' (추천)' : ''}`}
             >
               {isRecommended && (
                 <div css={recommendBadgeStyle}>
