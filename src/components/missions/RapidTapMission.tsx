@@ -1,25 +1,10 @@
 /** @jsxImportSource @emotion/react */
 import { css, keyframes } from '@emotion/react';
-import { useState, useRef, useCallback, useMemo } from 'react';
+import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { Text } from '@toss/tds-mobile';
 import { haptic } from '../../utils/haptic';
 
-const containerStyle = css`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  flex: 1;
-  padding: 20px;
-  position: relative;
-  overflow: hidden;
-`;
-
-const guideStyle = css`
-  margin-bottom: 24px;
-  text-align: center;
-  z-index: 2;
-`;
+/* ───────── 키프레임 ───────── */
 
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(8px); }
@@ -49,11 +34,65 @@ const floatUp = keyframes`
   100% { opacity: 0; transform: translateY(-80px) scale(0.5); }
 `;
 
-const tapZoneStyle = (intensity: number) => css`
+const emberFloat = keyframes`
+  0% { transform: translateY(0) scale(1); opacity: 0.8; }
+  50% { transform: translateY(-50px) scale(0.6); opacity: 0.5; }
+  100% { transform: translateY(-100px) scale(0.2); opacity: 0; }
+`;
+
+const eruptionBurst = keyframes`
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  100% { transform: translateY(-120px) scale(0); opacity: 0; }
+`;
+
+/* ───────── 컬러 ───────── */
+
+function getIntensityColor(intensity: number): string {
+  if (intensity < 0.3) return '#546E7A';  // 회색 암석
+  if (intensity < 0.6) return '#E65100';  // 주황 용암
+  if (intensity < 0.8) return '#D32F2F';  // 빨강
+  return '#FFC107';                        // 노란 폭발
+}
+
+function getCraterGradient(intensity: number): string {
+  const centerColor = intensity < 0.3 ? '#37474F' :
+    intensity < 0.6 ? '#E65100' :
+    intensity < 0.8 ? '#D32F2F' : '#FFC107';
+  const midColor = intensity < 0.3 ? '#546E7A' : '#37474F';
+  return `radial-gradient(circle at 50% 50%, ${centerColor} 0%, ${midColor} 55%, #263238 100%)`;
+}
+
+/* ───────── 스타일 ───────── */
+
+const containerStyle = (intensity: number) => css`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(
+    180deg,
+    #1a1a2e 0%,
+    ${intensity > 0.5 ? `rgba(230,81,0, ${intensity * 0.08})` : '#1a1a2e'} 50%,
+    #16213e 100%
+  );
+  transition: background 0.3s;
+`;
+
+const guideStyle = css`
+  margin-bottom: 24px;
+  text-align: center;
+  z-index: 2;
+`;
+
+const craterStyle = (intensity: number) => css`
   width: 220px;
   height: 220px;
   border-radius: 50%;
-  background: ${getIntensityColor(intensity)};
+  background: ${getCraterGradient(intensity)};
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -64,7 +103,17 @@ const tapZoneStyle = (intensity: number) => css`
   position: relative;
   z-index: 2;
   transition: background 0.15s;
-  ${intensity > 0.5 ? `animation: ${shakeAnimation} 0.3s ease-in-out infinite;` : ''}
+  box-shadow:
+    inset 0 0 ${20 + intensity * 40}px rgba(${
+      intensity < 0.3 ? '0,0,0' :
+      intensity < 0.6 ? '230,81,0' :
+      intensity < 0.8 ? '244,67,54' : '255,193,7'
+    }, ${0.3 + intensity * 0.4}),
+    0 0 ${intensity * 30}px rgba(255, 109, 0, ${intensity * 0.3});
+
+  ${intensity > 0.3 && intensity <= 0.5 && `animation: ${shakeAnimation} 0.5s ease-in-out infinite;`}
+  ${intensity > 0.5 && intensity <= 0.7 && `animation: ${shakeAnimation} 0.3s ease-in-out infinite;`}
+  ${intensity > 0.7 && `animation: ${shakeAnimation} 0.15s ease-in-out infinite;`}
 
   &:active {
     transform: scale(0.96);
@@ -76,7 +125,7 @@ const rippleStyle = css`
   width: 80px;
   height: 80px;
   border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.5);
+  border: 3px solid rgba(255, 200, 100, 0.4);
   animation: ${impactRipple} 0.4s ease-out forwards;
   pointer-events: none;
 `;
@@ -86,7 +135,7 @@ const floatingNumberStyle = css`
   pointer-events: none;
   font-weight: bold;
   font-size: 20px;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 200, 100, 0.8);
   animation: ${floatUp} 0.6s ease-out forwards;
   z-index: 3;
 `;
@@ -111,7 +160,7 @@ const meterContainerStyle = css`
   margin-top: 32px;
   z-index: 2;
   padding: 16px;
-  background: rgba(0, 0, 0, 0.03);
+  background: rgba(255, 255, 255, 0.05);
   border-radius: 16px;
 `;
 
@@ -126,17 +175,17 @@ const meterBarStyle = css`
   width: 100%;
   height: 14px;
   border-radius: 7px;
-  background: #E5E8EB;
+  background: #37474F;
   overflow: hidden;
 `;
 
 const meterFillStyle = (intensity: number) => css`
   height: 100%;
   width: ${intensity * 100}%;
-  background: ${getIntensityColor(intensity)};
+  background: linear-gradient(90deg, #E65100, #FF6D00, #D32F2F, #FFC107);
   border-radius: 7px;
-  transition: width 0.15s, background 0.15s;
-  ${intensity > 0.6 ? `box-shadow: 0 0 12px ${getIntensityColor(intensity)}80;` : ''}
+  transition: width 0.15s;
+  ${intensity > 0.6 ? `box-shadow: 0 0 12px rgba(255, 109, 0, 0.6);` : ''}
 `;
 
 const meterTicksStyle = css`
@@ -146,46 +195,47 @@ const meterTicksStyle = css`
   padding: 0 2px;
 `;
 
-const bgParticleStyle = (x: number, y: number, size: number, color: string) => css`
+/* 용암 균열 SVG */
+const crackOverlayStyle = css`
   position: absolute;
-  width: ${size}px;
-  height: ${size}px;
-  border-radius: 50%;
-  background: ${color};
-  left: ${x}%;
-  top: ${y}%;
-  opacity: 0.15;
+  inset: 0;
   pointer-events: none;
-  transition: opacity 0.3s;
+  z-index: 1;
 `;
 
-interface RapidTapMissionProps {
-  onComplete: () => void;
-}
+/* 화산재/불씨 파티클 */
+const emberStyle = (x: number, duration: number, delay: number) => css`
+  position: absolute;
+  width: ${3 + Math.random() * 4}px;
+  height: ${3 + Math.random() * 4}px;
+  border-radius: 50%;
+  left: ${x}%;
+  bottom: 30%;
+  pointer-events: none;
+  z-index: 1;
+  animation: ${emberFloat} ${duration}s ease-out ${delay}s infinite;
+`;
 
-interface Ripple {
-  id: number;
-}
+/* 폭발 파티클 */
+const eruptionParticleStyle = (angle: number, color: string) => css`
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: ${color};
+  top: 30%;
+  left: 50%;
+  pointer-events: none;
+  z-index: 3;
+  animation: ${eruptionBurst} 0.8s ease-out forwards;
+  transform: rotate(${angle}deg);
+`;
 
-interface FloatingNum {
-  id: number;
-  value: number;
-}
+const encourageMsgAnimStyle = css`
+  animation: ${fadeIn} 0.2s ease-out;
+`;
 
-function getIntensityColor(intensity: number): string {
-  if (intensity < 0.3) return '#3182F6';
-  if (intensity < 0.6) return '#7B61FF';
-  if (intensity < 0.8) return '#FF6B6B';
-  return '#FF3B3B';
-}
-
-function getComboMessage(tps: number): string {
-  if (tps >= 8) return '미쳤다!!!🤯';
-  if (tps >= 6) return '불타오르는중🔥';
-  if (tps >= 4) return '대단해요!!';
-  if (tps >= 2) return '좋아요!';
-  return '';
-}
+/* ───────── 격려 메시지 ───────── */
 
 const ENCOURAGE_MESSAGES = [
   '스트레스가 날아가고 있어요 💨',
@@ -211,17 +261,45 @@ function getRandomEncourage(prevIndex: number): [string, number] {
   return [ENCOURAGE_MESSAGES[idx], idx];
 }
 
-const encourageMsgAnimStyle = css`
-  animation: ${fadeIn} 0.2s ease-out;
-`;
+function getComboMessage(tps: number): string {
+  if (tps >= 8) return '미쳤다!!!🤯';
+  if (tps >= 6) return '불타오르는중🔥';
+  if (tps >= 4) return '대단해요!!';
+  if (tps >= 2) return '좋아요!';
+  return '';
+}
 
-export default function RapidTapMission({ onComplete }: RapidTapMissionProps) {
+/* ───────── 용암 균열 경로 ───────── */
+
+const CRACK_PATHS = [
+  'M110 50 Q105 80 115 110',
+  'M90 60 Q95 90 85 120',
+  'M130 55 Q120 85 130 115',
+  'M100 70 Q92 100 100 130',
+];
+
+const ERUPTION_COLORS = ['#FFC107', '#FFEB3B', '#FF6D00', '#FF8A65', '#D32F2F'];
+
+/* ───────── 타입 ───────── */
+
+interface RapidTapMissionProps {
+  onComplete: () => void;
+  onIntensityChange?: (intensity: number) => void;
+}
+
+interface Ripple { id: number; }
+interface FloatingNum { id: number; value: number; }
+
+/* ───────── 메인 컴포넌트 ───────── */
+
+export default function RapidTapMission({ onComplete, onIntensityChange }: RapidTapMissionProps) {
   const [count, setCount] = useState(0);
   const [ripples, setRipples] = useState<Ripple[]>([]);
   const [floatingNums, setFloatingNums] = useState<FloatingNum[]>([]);
-  const [tps, setTps] = useState(0); // taps per second
+  const [tps, setTps] = useState(0);
   const [intensity, setIntensity] = useState(0);
   const [encourageMsg, setEncourageMsg] = useState('');
+  const [showEruption, setShowEruption] = useState(false);
 
   const rippleIdRef = useRef(0);
   const floatIdRef = useRef(0);
@@ -229,27 +307,44 @@ export default function RapidTapMission({ onComplete }: RapidTapMissionProps) {
   const intensityDecayTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const isCompleted = useRef(false);
   const prevMsgIndexRef = useRef(-1);
+  const prevIntensityRef = useRef(0);
 
-  // 배경 장식 파티클 (고정)
-  const bgParticles = useMemo(() =>
-    Array.from({ length: 12 }, (_, i) => ({
+  // 화산재 파티클 데이터 (고정)
+  const embers = useMemo(() =>
+    Array.from({ length: 16 }, (_, i) => ({
       id: i,
-      x: 10 + Math.random() * 80,
-      y: 10 + Math.random() * 80,
-      size: 20 + Math.random() * 40,
-      color: ['#3182F6', '#7B61FF', '#FF6B6B', '#FFD93D'][i % 4],
+      x: 20 + Math.random() * 60,
+      duration: 1.5 + Math.random() * 1.5,
+      delay: Math.random() * 2,
+      color: ERUPTION_COLORS[i % ERUPTION_COLORS.length],
     }))
   , []);
 
-  // intensity 감쇠 시작
+  // 폭발 파티클 각도 (고정)
+  const eruptionAngles = useMemo(() =>
+    Array.from({ length: 12 }, (_, i) => ({
+      id: i,
+      angle: (360 / 12) * i + Math.random() * 15,
+      color: ERUPTION_COLORS[Math.floor(Math.random() * ERUPTION_COLORS.length)],
+    }))
+  , []);
+
+  // intensity 변화 콜백
+  useEffect(() => {
+    if (Math.abs(intensity - prevIntensityRef.current) > 0.05) {
+      prevIntensityRef.current = intensity;
+      onIntensityChange?.(intensity);
+    }
+  }, [intensity, onIntensityChange]);
+
+  // intensity 감쇠 (100ms마다 -0.008 → 초당 -0.08)
   if (!intensityDecayTimer.current) {
     intensityDecayTimer.current = setInterval(() => {
-      setIntensity(prev => Math.max(0, prev - 0.02));
-      // TPS 업데이트
+      setIntensity(prev => Math.max(0, prev - 0.008));
       const now = Date.now();
       tapTimestamps.current = tapTimestamps.current.filter(t => now - t < 1000);
       setTps(tapTimestamps.current.length);
-    }, 50);
+    }, 100);
   }
 
   const handleTap = useCallback(() => {
@@ -263,17 +358,13 @@ export default function RapidTapMission({ onComplete }: RapidTapMissionProps) {
     } else {
       haptic.tap();
     }
+
     const now = Date.now();
     tapTimestamps.current.push(now);
 
-    // 카운트 증가
     setCount(prev => {
       const next = prev + 1;
-      // 목표 없이 60초 타이머에 의존하지만, 엄청난 탭 수에 대한 축하
-      if (next % 50 === 0) {
-        haptic.success();
-      }
-      // 10탭마다 격려 메시지
+      if (next % 50 === 0) haptic.success();
       if (next % 10 === 0) {
         const [msg, idx] = getRandomEncourage(prevMsgIndexRef.current);
         prevMsgIndexRef.current = idx;
@@ -282,8 +373,15 @@ export default function RapidTapMission({ onComplete }: RapidTapMissionProps) {
       return next;
     });
 
-    // intensity 증가
-    setIntensity(prev => Math.min(1, prev + 0.05));
+    setIntensity(prev => {
+      const next = Math.min(1, prev + 0.06);
+      // 폭발 이펙트 트리거
+      if (next > 0.85 && prev <= 0.85) {
+        setShowEruption(true);
+        setTimeout(() => setShowEruption(false), 800);
+      }
+      return next;
+    });
 
     // 리플 이펙트
     const rippleId = rippleIdRef.current++;
@@ -292,7 +390,7 @@ export default function RapidTapMission({ onComplete }: RapidTapMissionProps) {
       setRipples(prev => prev.filter(r => r.id !== rippleId));
     }, 400);
 
-    // 플로팅 숫자 (5탭마다)
+    // 플로팅 숫자
     const currentCount = tapTimestamps.current.filter(t => now - t < 1000).length;
     if (currentCount >= 3) {
       const floatId = floatIdRef.current++;
@@ -301,42 +399,69 @@ export default function RapidTapMission({ onComplete }: RapidTapMissionProps) {
         setFloatingNums(prev => prev.filter(f => f.id !== floatId));
       }, 600);
     }
-  }, []);
+  }, [intensity]);
 
-  // onComplete은 Session의 타이머가 처리하므로 여기서는 별도로 호출하지 않음
-  // 하지만 혹시 직접 호출이 필요할 경우를 위해 prop은 유지
   void onComplete;
 
   const comboMessage = getComboMessage(tps);
 
   return (
-    <div css={containerStyle}>
-      {/* 배경 파티클 */}
-      {bgParticles.map(p => (
+    <div css={containerStyle(intensity)}>
+      {/* 화산재 파티클 */}
+      {embers.map(e => (
         <div
-          key={p.id}
-          css={[
-            bgParticleStyle(p.x, p.y, p.size, p.color),
-            intensity > 0.3 && css`opacity: ${0.1 + intensity * 0.2};`,
-          ]}
+          key={e.id}
+          css={emberStyle(e.x, e.duration, e.delay)}
+          style={{
+            background: e.color,
+            opacity: intensity > 0.4 ? 0.8 : 0,
+          }}
         />
       ))}
 
+      {/* 가이드 */}
       <div css={guideStyle}>
         {encourageMsg ? (
           <div key={encourageMsg} css={encourageMsgAnimStyle}>
-            <Text typography="t4" fontWeight="medium" color="#3182F6">
+            <Text typography="t4" fontWeight="medium" color={getIntensityColor(intensity)}>
               {encourageMsg}
             </Text>
           </div>
         ) : (
-          <Text typography="t4" fontWeight="medium" color="#333D4B">
+          <Text typography="t4" fontWeight="medium" color="#B0BEC5">
             마음껏 두드려요!
           </Text>
         )}
       </div>
 
-      <div css={tapZoneStyle(intensity)} onClick={handleTap} role="button" aria-label={`빠르게 터치 ${count}탭`}>
+      {/* 화산 분화구 */}
+      <div css={craterStyle(intensity)} onClick={handleTap} role="button" aria-label={`빠르게 터치 ${count}탭`}>
+        {/* 용암 균열 */}
+        {intensity > 0.3 && (
+          <svg css={crackOverlayStyle} viewBox="0 0 220 220">
+            <defs>
+              <filter id="lavaGlow">
+                <feGaussianBlur stdDeviation="2" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+            {CRACK_PATHS.map((path, i) => (
+              <path
+                key={i}
+                d={path}
+                stroke={intensity > 0.6 ? '#FF6D00' : '#E65100'}
+                strokeWidth={1 + intensity * 2}
+                fill="none"
+                opacity={Math.min(1, (intensity - 0.3) * 3)}
+                filter="url(#lavaGlow)"
+              />
+            ))}
+          </svg>
+        )}
+
         {ripples.map(ripple => (
           <div key={ripple.id} css={rippleStyle} />
         ))}
@@ -345,20 +470,28 @@ export default function RapidTapMission({ onComplete }: RapidTapMissionProps) {
             +{f.value}
           </div>
         ))}
+
         <Text typography="t1" fontWeight="bold" color="#fff">
           {count}
         </Text>
-        <Text typography="t6" color="rgba(255,255,255,0.7)" style={{ marginTop: 4 }}>
+        <Text typography="t6" color="rgba(255,255,255,0.6)" style={{ marginTop: 4 }}>
           탭
         </Text>
       </div>
 
+      {/* 폭발 파티클 */}
+      {showEruption && eruptionAngles.map(p => (
+        <div key={p.id} css={eruptionParticleStyle(p.angle, p.color)} />
+      ))}
+
+      {/* TPS */}
       <div css={countStyle}>
-        <Text typography="t5" color="#6B7684">
+        <Text typography="t5" color="#78909C">
           {tps > 0 ? `${tps}회/초` : '터치를 시작해요'}
         </Text>
       </div>
 
+      {/* 콤보 */}
       <div css={comboStyle}>
         {comboMessage && (
           <div css={comboTextStyle}>
@@ -369,10 +502,11 @@ export default function RapidTapMission({ onComplete }: RapidTapMissionProps) {
         )}
       </div>
 
+      {/* 마그마 미터 */}
       <div css={meterContainerStyle}>
         <div css={meterLabelRowStyle}>
-          <Text typography="t6" fontWeight="bold" color="#333D4B">
-            🔥 강도
+          <Text typography="t6" fontWeight="bold" color="#B0BEC5">
+            🌋 마그마
           </Text>
           <Text typography="t6" fontWeight="bold" color={getIntensityColor(intensity)}>
             {Math.round(intensity * 100)}%
@@ -382,9 +516,9 @@ export default function RapidTapMission({ onComplete }: RapidTapMissionProps) {
           <div css={meterFillStyle(intensity)} />
         </div>
         <div css={meterTicksStyle}>
-          <Text typography="t7" color="#8B95A1">0</Text>
-          <Text typography="t7" color="#8B95A1">50</Text>
-          <Text typography="t7" color="#8B95A1">100</Text>
+          <Text typography="t7" color="#546E7A">0</Text>
+          <Text typography="t7" color="#546E7A">50</Text>
+          <Text typography="t7" color="#546E7A">100</Text>
         </div>
       </div>
     </div>

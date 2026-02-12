@@ -1,6 +1,16 @@
 import type { SaveData, Mood, MissionMode, HistoryEntry } from '../types';
 
 const STORAGE_KEY = 'calm60_save_v1';
+const SOUND_MUTED_KEY = 'calm60_sound_muted';
+
+// 사운드 음소거 설정
+export const getSoundMuted = (): boolean => {
+  return localStorage.getItem(SOUND_MUTED_KEY) === 'true';
+};
+
+export const setSoundMuted = (muted: boolean): void => {
+  localStorage.setItem(SOUND_MUTED_KEY, String(muted));
+};
 
 // 초기 데이터
 const getInitialData = (): SaveData => ({

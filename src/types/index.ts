@@ -86,6 +86,20 @@ export interface SaveData {
   modeStats: Record<MissionMode, number>;
 }
 
+// 사운드 타입
+export type AmbientSoundType = 'rain' | 'wind' | 'forest' | 'ocean' | 'rumble' | 'steam';
+
+export interface MissionSoundConfig {
+  layers: Array<{ type: AmbientSoundType; volume: number }>;
+}
+
+export const MISSION_SOUND_CONFIG: Record<MissionMode, MissionSoundConfig> = {
+  slow_tap: { layers: [{ type: 'rain', volume: 0.3 }] },
+  hold_release: { layers: [{ type: 'wind', volume: 0.2 }, { type: 'forest', volume: 0.15 }] },
+  grounding_321: { layers: [{ type: 'wind', volume: 0.15 }] },
+  rapid_tap: { layers: [{ type: 'rumble', volume: 0.1 }] },
+};
+
 // 완료 후 액션 타입
 export type CompleteAction = 'water' | 'window' | 'walk';
 

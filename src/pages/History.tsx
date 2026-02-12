@@ -300,7 +300,7 @@ export default function History() {
               감정별
             </Text>
             {sortedMoodStats.length > 0 ? (
-              sortedMoodStats.slice(0, 4).map(([mood, count]) => (
+              sortedMoodStats.map(([mood, count]) => (
                 <div key={mood} css={statItemStyle}>
                   <div css={statLabelStyle}>
                     <Asset.Frame

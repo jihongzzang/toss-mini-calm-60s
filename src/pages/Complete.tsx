@@ -1,6 +1,6 @@
 /** @jsxImportSource @emotion/react */
 import {css, keyframes} from "@emotion/react";
-import {useState, useEffect, useMemo} from "react";
+import {useState, useEffect, useMemo, useRef} from "react";
 import {useNavigate, useLocation} from "react-router-dom";
 import {Text, Button, Asset} from "@toss/tds-mobile";
 import {recordCompletion} from "../stores/storage";
@@ -193,11 +193,20 @@ export default function Complete() {
 
   const [selectedAction, setSelectedAction] = useState<CompleteAction | null>(null);
   const [animatingAction, setAnimatingAction] = useState<CompleteAction | null>(null);
+  const savedRef = useRef(false);
 
   useEffect(() => {
     const timer = setTimeout(() => haptic.confetti(), 300);
     return () => clearTimeout(timer);
   }, []);
+
+  // 마운트 시 자동 저장
+  useEffect(() => {
+    if (!savedRef.current) {
+      savedRef.current = true;
+      recordCompletion(mood, mode);
+    }
+  }, [mood, mode]);
 
   const handleActionSelect = (action: CompleteAction) => {
     haptic.light();
@@ -206,9 +215,8 @@ export default function Complete() {
     setTimeout(() => setAnimatingAction(null), 300);
   };
 
-  const handleSave = () => {
+  const handleGoHome = () => {
     haptic.success();
-    recordCompletion(mood, mode);
     navigate("/");
   };
 
@@ -281,8 +289,8 @@ export default function Complete() {
       </div>
 
       <div css={ctaContainerStyle}>
-        <Button display="block" size="xlarge" color="primary" onClick={handleSave}>
-          기록 남기기
+        <Button display="block" size="xlarge" color="primary" onClick={handleGoHome}>
+          홈으로
         </Button>
         <Button display="block" size="xlarge" color="light" onClick={handleRetry}>
           한 번 더 하기

@@ -58,12 +58,18 @@ const chipPop = keyframes`
   100% { transform: scale(1); }
 `;
 
+const glowPulse = keyframes`
+  0% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4); }
+  50% { box-shadow: 0 0 12px 4px rgba(76, 175, 80, 0.2); }
+  100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
+`;
+
 /* ───────── 섹션별 배경색 ───────── */
 
 const SECTION_COLORS: Record<string, string> = {
-  see: 'rgba(135, 206, 250, 0.08)',
-  hear: 'rgba(144, 238, 144, 0.08)',
-  feel: 'rgba(255, 218, 185, 0.08)',
+  see: 'rgba(129, 199, 132, 0.06)',   // 연한 초록 — 시각
+  hear: 'rgba(165, 214, 167, 0.08)',   // 자연 초록 — 청각
+  feel: 'rgba(200, 230, 201, 0.10)',   // 따뜻한 초록 — 촉각
 };
 
 /* ───────── 스타일 ───────── */
@@ -74,7 +80,7 @@ const containerStyle = (bgColor: string) => css`
   flex: 1;
   padding: 24px 20px;
   background: ${bgColor};
-  transition: background 0.8s ease;
+  transition: background 1.2s ease;
 `;
 
 const titleStyle = css`
@@ -99,11 +105,15 @@ const iconCircleStyle = (isActive: boolean, isCompleted: boolean) => css`
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: ${isCompleted ? '#3182F6' : isActive ? '#3182F6' : '#E5E8EB'};
+  background: ${isCompleted ? '#4CAF50' : isActive ? '#3182F6' : '#E5E8EB'};
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.3s ease;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+  ${isCompleted && `
+    box-shadow: 0 0 8px 2px rgba(76, 175, 80, 0.3);
+    animation: ${glowPulse} 2s ease-in-out;
+  `}
 `;
 
 const chipGridStyle = css`
@@ -116,12 +126,13 @@ const chipGridStyle = css`
 const chipStyle = (isSelected: boolean, isActive: boolean) => css`
   padding: 10px 16px;
   border-radius: 20px;
-  border: 1.5px solid ${isSelected ? '#3182F6' : isActive ? '#B8D4FF' : '#E5E8EB'};
-  background: ${isSelected ? '#F2F7FF' : '#fff'};
+  border: 1.5px solid ${isSelected ? '#4CAF50' : isActive ? '#B8D4FF' : '#E5E8EB'};
+  background: ${isSelected ? '#F1F8E9' : '#fff'};
   cursor: ${isActive && !isSelected ? 'pointer' : 'default'};
-  transition: border-color 0.2s, background 0.2s;
+  transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+  ${isSelected && `box-shadow: 0 1px 3px rgba(76, 175, 80, 0.15);`}
 
   ${isActive && !isSelected && `
     &:active {
@@ -176,7 +187,7 @@ function AnimatedCheckIcon({ isChecked }: { isChecked: boolean }) {
   );
 }
 
-const BURST_COLORS = ['#3182F6', '#FF6B6B', '#FFD93D', '#6BCB77', '#B8D4FF'];
+const BURST_COLORS = ['#4CAF50', '#81C784', '#FFD93D', '#6BCB77', '#A5D6A7'];
 
 function CelebrationBurst() {
   const dots = useMemo(() =>
@@ -241,6 +252,7 @@ function getRandomEncourage(prevIndex: number): [string, number] {
 
 interface GroundingMissionProps {
   onComplete: () => void;
+  onSectionChange?: (section: string) => void;
 }
 
 interface SectionData {
@@ -254,7 +266,7 @@ interface SectionData {
 
 /* ───────── 메인 컴포넌트 ───────── */
 
-export default function GroundingMission({ onComplete }: GroundingMissionProps) {
+export default function GroundingMission({ onComplete, onSectionChange }: GroundingMissionProps) {
   // 최초 마운트 시 선택지 랜덤 생성 (리렌더링에도 유지)
   const [sections, setSections] = useState<SectionData[]>(() => [
     {
@@ -307,8 +319,11 @@ export default function GroundingMission({ onComplete }: GroundingMissionProps) 
   // 섹션 전환 감지
   const sectionJustActivated = activeSection !== prevActiveSectionRef.current;
   useEffect(() => {
+    if (activeSection && activeSection !== prevActiveSectionRef.current) {
+      onSectionChange?.(activeSection);
+    }
     prevActiveSectionRef.current = activeSection;
-  }, [activeSection]);
+  }, [activeSection, onSectionChange]);
 
   const handleSelect = (sectionId: string, option: string) => {
     haptic.tap();
@@ -366,7 +381,7 @@ export default function GroundingMission({ onComplete }: GroundingMissionProps) 
       <div css={titleStyle}>
         {encourageMsg ? (
           <div key={encourageMsg} css={encourageTextAnim}>
-            <Text typography="t4" fontWeight="medium" color="#3182F6">
+            <Text typography="t4" fontWeight="medium" color="#4CAF50">
               {encourageMsg}
             </Text>
           </div>
@@ -396,7 +411,7 @@ export default function GroundingMission({ onComplete }: GroundingMissionProps) 
               <Text
                 typography="t5"
                 fontWeight="bold"
-                color={isCompleted ? '#3182F6' : isActive ? '#333D4B' : '#8B95A1'}
+                color={isCompleted ? '#4CAF50' : isActive ? '#333D4B' : '#8B95A1'}
               >
                 {section.title}
               </Text>
@@ -442,7 +457,7 @@ export default function GroundingMission({ onComplete }: GroundingMissionProps) 
                     <Text
                       typography="t6"
                       fontWeight={isSelected ? 'bold' : 'medium'}
-                      color={isSelected ? '#3182F6' : isActive ? '#333D4B' : '#8B95A1'}
+                      color={isSelected ? '#2E7D32' : isActive ? '#333D4B' : '#8B95A1'}
                     >
                       {option}
                     </Text>
