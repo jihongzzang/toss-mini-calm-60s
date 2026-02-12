@@ -12,6 +12,7 @@ import {
   MissionMode,
   SaveData,
 } from '../types';
+import { primary, textPrimary, textSecondary, textMuted, surface, surfaceAlt, border } from '../styles/tokens';
 
 const fadeSlideIn = keyframes`
   0% { opacity: 0; transform: translateY(12px); }
@@ -31,7 +32,7 @@ const titleStyle = css`
 /* ───────── 스트릭 카드 ───────── */
 
 const streakCardStyle = css`
-  background: linear-gradient(135deg, #3182F6 0%, #1A6DD9 100%);
+  background: linear-gradient(135deg, ${primary} 0%, #1A6DD9 100%);
   border-radius: 16px;
   padding: 24px;
   margin-bottom: 16px;
@@ -62,7 +63,7 @@ const summaryRowStyle = css`
 
 const summaryCardStyle = css`
   flex: 1;
-  background: #F8F9FA;
+  background: ${surface};
   border-radius: 12px;
   padding: 20px 16px;
   text-align: center;
@@ -95,12 +96,12 @@ const dayLabelStyle = css`
 const dayItemStyle = (hasRecord: boolean, isToday: boolean) => css`
   aspect-ratio: 1;
   border-radius: 12px;
-  background: ${hasRecord ? '#3182F6' : '#F8F9FA'};
+  background: ${hasRecord ? primary : surface};
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border: ${isToday ? '2px solid #3182F6' : 'none'};
+  border: ${isToday ? `2px solid ${primary}` : 'none'};
   transition: background 0.3s ease;
 `;
 
@@ -113,7 +114,7 @@ const statsGridStyle = css`
 `;
 
 const statCardStyle = css`
-  background: #F8F9FA;
+  background: ${surface};
   border-radius: 12px;
   padding: 20px 16px;
 `;
@@ -125,7 +126,7 @@ const statItemStyle = css`
   padding: 10px 0;
 
   &:not(:last-child) {
-    border-bottom: 1px solid #E5E8EB;
+    border-bottom: 1px solid ${border};
   }
 `;
 
@@ -138,7 +139,7 @@ const statLabelStyle = css`
 const emptyStateStyle = css`
   text-align: center;
   padding: 40px 20px;
-  background: #F8F9FA;
+  background: ${surface};
   border-radius: 16px;
   animation: ${fadeSlideIn} 0.4s ease-out 0.2s both;
 `;
@@ -226,22 +227,22 @@ export default function History() {
         <div css={summaryCardStyle}>
           <Asset.Icon
             name="icon-clock-mono"
-            color="#8B95A1"
+            color={textMuted}
             frameShape={Asset.frameShape.CleanW20}
           />
-          <Text typography="t7" color="#8B95A1">오늘</Text>
-          <Text typography="t3" fontWeight="bold" color="#3182F6">
+          <Text typography="t7" color={textMuted}>오늘</Text>
+          <Text typography="t3" fontWeight="bold" color={primary}>
             {data.todayCount}회
           </Text>
         </div>
         <div css={summaryCardStyle}>
           <Asset.Icon
             name="icon-chart-mono"
-            color="#8B95A1"
+            color={textMuted}
             frameShape={Asset.frameShape.CleanW20}
           />
-          <Text typography="t7" color="#8B95A1">전체</Text>
-          <Text typography="t3" fontWeight="bold" color="#3182F6">
+          <Text typography="t7" color={textMuted}>전체</Text>
+          <Text typography="t3" fontWeight="bold" color={primary}>
             {animatedTotal}회
           </Text>
         </div>
@@ -268,7 +269,7 @@ export default function History() {
                 css={css`animation: ${fadeSlideIn} 0.3s ease-out ${index * 0.05}s both;`}
               >
                 <div css={dayLabelStyle}>
-                  <Text typography="t7" color="#8B95A1">
+                  <Text typography="t7" color={textMuted}>
                     {DAY_LABELS[dayOfWeek]}
                   </Text>
                 </div>
@@ -276,7 +277,7 @@ export default function History() {
                   <Text
                     typography="t6"
                     fontWeight="bold"
-                    color={item.count > 0 ? '#fff' : '#333D4B'}
+                    color={item.count > 0 ? '#fff' : textPrimary}
                   >
                     {dayNum}
                   </Text>
@@ -296,7 +297,7 @@ export default function History() {
       {hasAnyRecord ? (
         <div css={[statsGridStyle, css`animation: ${fadeSlideIn} 0.4s ease-out 0.3s both;`]}>
           <div css={statCardStyle}>
-            <Text typography="t6" fontWeight="bold" color="#333D4B" style={{ marginBottom: 12 }}>
+            <Text typography="t6" fontWeight="bold" color={textPrimary} style={{ marginBottom: 12 }}>
               감정별
             </Text>
             {sortedMoodStats.length > 0 ? (
@@ -305,27 +306,27 @@ export default function History() {
                   <div css={statLabelStyle}>
                     <Asset.Frame
                       shape={Asset.frameShape.CircleXSmall}
-                      backgroundColor="#F2F4F6"
+                      backgroundColor={surfaceAlt}
                       content={<span style={{ fontSize: 12 }}>{MOOD_ICONS[mood as Mood]}</span>}
                     />
-                    <Text typography="t7" color="#6B7684">
+                    <Text typography="t7" color={textSecondary}>
                       {MOOD_LABELS[mood as Mood]}
                     </Text>
                   </div>
-                  <Text typography="t6" fontWeight="bold" color="#3182F6">
+                  <Text typography="t6" fontWeight="bold" color={primary}>
                     {count}회
                   </Text>
                 </div>
               ))
             ) : (
-              <Text typography="t7" color="#8B95A1">
+              <Text typography="t7" color={textMuted}>
                 기록이 생기면 여기에 보여요
               </Text>
             )}
           </div>
 
           <div css={statCardStyle}>
-            <Text typography="t6" fontWeight="bold" color="#333D4B" style={{ marginBottom: 12 }}>
+            <Text typography="t6" fontWeight="bold" color={textPrimary} style={{ marginBottom: 12 }}>
               모드별
             </Text>
             {sortedModeStats.length > 0 ? (
@@ -334,20 +335,20 @@ export default function History() {
                   <div css={statLabelStyle}>
                     <Asset.Frame
                       shape={Asset.frameShape.CircleXSmall}
-                      backgroundColor="#F2F4F6"
+                      backgroundColor={surfaceAlt}
                       content={<span style={{ fontSize: 12 }}>{MISSION_INFO[mode as MissionMode].icon}</span>}
                     />
-                    <Text typography="t7" color="#6B7684">
+                    <Text typography="t7" color={textSecondary}>
                       {MISSION_INFO[mode as MissionMode].label}
                     </Text>
                   </div>
-                  <Text typography="t6" fontWeight="bold" color="#3182F6">
+                  <Text typography="t6" fontWeight="bold" color={primary}>
                     {count}회
                   </Text>
                 </div>
               ))
             ) : (
-              <Text typography="t7" color="#8B95A1">
+              <Text typography="t7" color={textMuted}>
                 기록이 생기면 여기에 보여요
               </Text>
             )}
@@ -355,10 +356,10 @@ export default function History() {
         </div>
       ) : (
         <div css={emptyStateStyle}>
-          <Text typography="t4" fontWeight="bold" color="#333D4B">
+          <Text typography="t4" fontWeight="bold" color={textPrimary}>
             기록이 생기면 여기에 보여요
           </Text>
-          <Text typography="t6" color="#8B95A1" style={{ marginTop: 8 }}>
+          <Text typography="t6" color={textMuted} style={{ marginTop: 8 }}>
             첫 번째 60초 리셋을 시작해 봐요!
           </Text>
         </div>

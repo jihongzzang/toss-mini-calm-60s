@@ -7,6 +7,8 @@ import {loadData} from "../stores/storage";
 import {useCountUp} from "../hooks/useCountUp";
 import {haptic} from "../utils/haptic";
 import {Mood, MOOD_LABELS, MOOD_ICONS, MOOD_RECOMMENDED_MISSION, MISSION_INFO} from "../types";
+import { primary, primaryLight, primarySelected, textPrimary, textSecondary, textMuted, surface, border } from '../styles/tokens';
+import { tapHighlightReset } from '../styles/mixins';
 
 const fadeSlideIn = keyframes`
   0% { opacity: 0; transform: translateY(16px); }
@@ -51,15 +53,15 @@ const moodGridStyle = css`
 const moodButtonStyle = (isSelected: boolean) => css`
   padding: 14px 12px;
   border-radius: 12px;
-  border: 1.5px solid ${isSelected ? "#3182F6" : "#E5E8EB"};
-  background: ${isSelected ? "#F2F7FF" : "#fff"};
+  border: 1.5px solid ${isSelected ? primary : border};
+  background: ${isSelected ? primarySelected : "#fff"};
   text-align: center;
   cursor: pointer;
   transition:
     border-color 0.2s,
     background 0.2s,
     transform 0.2s;
-  -webkit-tap-highlight-color: transparent;
+  ${tapHighlightReset}
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -78,7 +80,7 @@ const recommendStyle = css`
   margin-top: 16px;
   margin-bottom: 24px;
   padding: 16px;
-  background: #f8f9fa;
+  background: ${surface};
   border-radius: 12px;
   animation: ${fadeSlideIn} 0.3s ease-out;
 `;
@@ -92,7 +94,7 @@ const statsStyle = css`
 const statItemStyle = css`
   flex: 1;
   padding: 20px 16px;
-  background: #f8f9fa;
+  background: ${surface};
   border-radius: 12px;
   text-align: center;
   display: flex;
@@ -163,7 +165,7 @@ export default function Home() {
   return (
     <div css={containerStyle}>
       <div css={titleStyle}>
-        <Text typography="t4" color="#6B7684">
+        <Text typography="t4" color={textSecondary}>
           {getGreeting()}
         </Text>
         <div css={subtitleStyle}>
@@ -181,8 +183,8 @@ export default function Home() {
             gap: 6px;
           `}
         >
-          <Asset.Icon name="icon-emoji-mono" color="#6B7684" frameShape={Asset.frameShape.CleanW20} />
-          <Text typography="t5" fontWeight="medium" color="#6B7684">
+          <Asset.Icon name="icon-emoji-mono" color={textSecondary} frameShape={Asset.frameShape.CleanW20} />
+          <Text typography="t5" fontWeight="medium" color={textSecondary}>
             지금 기분이 어때요?
           </Text>
         </div>
@@ -201,16 +203,18 @@ export default function Home() {
                 `,
               ]}
               onClick={() => handleMoodSelect(mood)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleMoodSelect(mood); } }}
+              tabIndex={0}
               role="radio"
               aria-checked={selectedMood === mood}
               aria-label={`${MOOD_ICONS[mood]} ${MOOD_LABELS[mood]}`}
             >
               <Asset.Frame
                 shape={Asset.frameShape.CircleMedium}
-                backgroundColor={selectedMood === mood ? "#E8F3FF" : "#F8F9FA"}
+                backgroundColor={selectedMood === mood ? primaryLight : surface}
                 content={<span css={moodEmojiStyle}>{MOOD_ICONS[mood]}</span>}
               />
-              <Text typography="t7" fontWeight={selectedMood === mood ? "bold" : "medium"} color={selectedMood === mood ? "#3182F6" : "#333D4B"}>
+              <Text typography="t7" fontWeight={selectedMood === mood ? "bold" : "medium"} color={selectedMood === mood ? primary : textPrimary}>
                 {MOOD_LABELS[mood]}
               </Text>
             </div>
@@ -227,8 +231,8 @@ export default function Home() {
               gap: 4px;
             `}
           >
-            <Asset.Icon name="icon-star-mono" color="#6B7684" frameShape={Asset.frameShape.CleanW16} />
-            <Text typography="t7" color="#6B7684">
+            <Asset.Icon name="icon-star-mono" color={textSecondary} frameShape={Asset.frameShape.CleanW16} />
+            <Text typography="t7" color={textSecondary}>
               추천 모드
             </Text>
           </div>
@@ -242,7 +246,7 @@ export default function Home() {
           >
             <Asset.Frame
               shape={Asset.frameShape.SquircleSmall}
-              backgroundColor="#E8F3FF"
+              backgroundColor={primaryLight}
               content={<span style={{fontSize: 16}}>{recommendedMission.icon}</span>}
             />
             <Text typography="t5" fontWeight="bold">
@@ -260,27 +264,27 @@ export default function Home() {
             gap: 6px;
           `}
         >
-          <Asset.Icon name="icon-chart-mono" color="#6B7684" frameShape={Asset.frameShape.CleanW20} />
-          <Text typography="t5" fontWeight="medium" color="#6B7684">
+          <Asset.Icon name="icon-chart-mono" color={textSecondary} frameShape={Asset.frameShape.CleanW20} />
+          <Text typography="t5" fontWeight="medium" color={textSecondary}>
             오늘 통계
           </Text>
         </div>
         <div css={statsStyle}>
           <div css={statItemStyle}>
-            <Asset.Icon name="icon-check-circle-mono" color="#8B95A1" frameShape={Asset.frameShape.CleanW24} />
-            <Text typography="t7" color="#8B95A1">
+            <Asset.Icon name="icon-check-circle-mono" color={textMuted} frameShape={Asset.frameShape.CleanW24} />
+            <Text typography="t7" color={textMuted}>
               오늘 완료
             </Text>
-            <Text typography="t3" fontWeight="bold" color="#3182F6">
+            <Text typography="t3" fontWeight="bold" color={primary}>
               {animatedTodayCount}회
             </Text>
           </div>
           <div css={statItemStyle}>
-            <Asset.Icon name="icon-trophy-mono" color="#8B95A1" frameShape={Asset.frameShape.CleanW24} />
-            <Text typography="t7" color="#8B95A1">
+            <Asset.Icon name="icon-trophy-mono" color={textMuted} frameShape={Asset.frameShape.CleanW24} />
+            <Text typography="t7" color={textMuted}>
               연속
             </Text>
-            <Text typography="t3" fontWeight="bold" color="#3182F6">
+            <Text typography="t3" fontWeight="bold" color={primary}>
               {animatedStreak}일
             </Text>
           </div>

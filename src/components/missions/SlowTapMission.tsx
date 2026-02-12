@@ -1,8 +1,11 @@
 /** @jsxImportSource @emotion/react */
 import { css, keyframes } from '@emotion/react';
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useCallback, useRef, useMemo } from 'react';
 import { Text, ProgressBar } from '@toss/tds-mobile';
-import { haptic } from '../../utils/haptic';
+import { SLOW_TAP_CONFIG } from '../../config/missionConfig';
+import { useSlowTapGame } from '../../hooks/useSlowTapGame';
+import { warningAlt } from '../../styles/tokens';
+import { interactiveTapArea } from '../../styles/mixins';
 
 /* ───────── 키프레임 ───────── */
 
@@ -82,8 +85,7 @@ const tapButtonStyle = (canTap: boolean) => css`
   justify-content: center;
   cursor: ${canTap ? 'pointer' : 'default'};
   transition: background 0.3s;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
+  ${interactiveTapArea}
   position: relative;
   z-index: 1;
   overflow: hidden;
@@ -168,41 +170,12 @@ const starStyle = (x: number, y: number, _size: number, delay: number, visible: 
   animation: ${visible ? twinkle : 'none'} ${3 + delay}s ease-in-out ${delay}s infinite;
 `;
 
-/* ───────── 격려 메시지 ───────── */
-
-const ENCOURAGE_MESSAGES = [
-  '좋아요, 이 리듬이에요 🌊',
-  '호흡이 편안해지고 있어요',
-  '천천히, 잘하고 있어요',
-  '지금 이 순간에 집중해 봐요',
-  '마음이 차분해지고 있어요',
-  '한 번의 터치가 쉼이에요 ✨',
-  '깊게 들이쉬고 내쉬어요',
-  '조금씩 안정되고 있어요',
-  '이 속도가 딱 좋아요',
-  '고요함이 다가오고 있어요',
-  '터치 하나에 긴장 하나가 풀려요',
-  '잘하고 있어요, 계속 이어가요',
-  '이 느낌을 기억해요',
-  '마음이 가벼워지고 있어요',
-  '자신에게 쉼을 주는 중이에요 🍃',
-];
-
-function getRandomMessage(prevIndex: number): [string, number] {
-  let idx: number;
-  do { idx = Math.floor(Math.random() * ENCOURAGE_MESSAGES.length); } while (idx === prevIndex);
-  return [ENCOURAGE_MESSAGES[idx], idx];
-}
-
 /* ───────── 타입 ───────── */
 
 interface SlowTapMissionProps {
   onComplete: () => void;
   onTap?: () => void;
 }
-
-const TARGET_COUNT = 30;
-const MIN_INTERVAL = 1500;
 
 interface WaterRipple {
   id: number;
@@ -224,33 +197,17 @@ function generateStars() {
 /* ───────── 메인 컴포넌트 ───────── */
 
 export default function SlowTapMission({ onComplete, onTap }: SlowTapMissionProps) {
-  const [count, setCount] = useState(0);
-  const [canTap, setCanTap] = useState(true);
-  const [showWarning, setShowWarning] = useState(false);
+  const { count, canTap, showWarning, encourageMsg, progress, handleTap: gameTap } = useSlowTapGame(onComplete, onTap);
+
   const [ripples, setRipples] = useState<WaterRipple[]>([]);
   const [animateCount, setAnimateCount] = useState(false);
-  const [encourageMsg, setEncourageMsg] = useState('');
-  const lastTapTime = useRef<number>(0);
   const rippleIdRef = useRef(0);
-  const prevMsgIndexRef = useRef(-1);
 
   const stars = useMemo(generateStars, []);
-  const progress = count / TARGET_COUNT;
 
-  const handleTap = useCallback(() => {
-    const now = Date.now();
-    const interval = now - lastTapTime.current;
-
-    if (lastTapTime.current > 0 && interval < MIN_INTERVAL) {
-      setShowWarning(true);
-      haptic.light();
-      setTimeout(() => setShowWarning(false), 1500);
-      return;
-    }
-
-    lastTapTime.current = now;
-    haptic.tap();
-    onTap?.();
+  const handleTapWithEffects = useCallback(() => {
+    const accepted = gameTap();
+    if (!accepted) return;
 
     // 물결 리플 3개 동심원
     const baseId = rippleIdRef.current;
@@ -265,26 +222,10 @@ export default function SlowTapMission({ onComplete, onTap }: SlowTapMissionProp
       setRipples(prev => prev.filter(r => !newRipples.some(nr => nr.id === r.id)));
     }, 1500);
 
-    setCount(prev => prev + 1);
+    // 카운트 바운스
     setAnimateCount(true);
     setTimeout(() => setAnimateCount(false), 300);
-
-    const [msg, idx] = getRandomMessage(prevMsgIndexRef.current);
-    prevMsgIndexRef.current = idx;
-    setEncourageMsg(msg);
-
-    setCanTap(false);
-    setTimeout(() => {
-      setCanTap(true);
-    }, 2000);
-  }, [onTap]);
-
-  useEffect(() => {
-    if (count >= TARGET_COUNT) {
-      haptic.success();
-      onComplete();
-    }
-  }, [count, onComplete]);
+  }, [gameTap]);
 
   return (
     <div css={containerStyle}>
@@ -329,7 +270,7 @@ export default function SlowTapMission({ onComplete, onTap }: SlowTapMissionProp
 
       {/* 탭 영역 */}
       <div css={tapAreaStyle}>
-        <div css={tapButtonStyle(canTap)} onClick={canTap ? handleTap : undefined} role="button" aria-label={`천천히 터치 ${count}/${TARGET_COUNT}`}>
+        <div css={tapButtonStyle(canTap)} onClick={canTap ? handleTapWithEffects : undefined} role="button" aria-label={`천천히 터치 ${count}/${SLOW_TAP_CONFIG.targetCount}`}>
           {/* 달 반사 */}
           <div css={moonReflectionStyle} />
 
@@ -344,7 +285,7 @@ export default function SlowTapMission({ onComplete, onTap }: SlowTapMissionProp
             </Text>
           </div>
           <Text typography="t6" color="rgba(197,213,232,0.7)" style={{ marginTop: 4 }}>
-            / {TARGET_COUNT}
+            / {SLOW_TAP_CONFIG.targetCount}
           </Text>
         </div>
       </div>
@@ -352,7 +293,7 @@ export default function SlowTapMission({ onComplete, onTap }: SlowTapMissionProp
       {/* 카운트 */}
       <div css={countStyle}>
         <Text typography="t5" color="#8B9BB5">
-          {TARGET_COUNT - count}회 남음
+          {SLOW_TAP_CONFIG.targetCount - count}회 남음
         </Text>
       </div>
 
@@ -360,7 +301,7 @@ export default function SlowTapMission({ onComplete, onTap }: SlowTapMissionProp
       <div css={warningStyle}>
         {showWarning && (
           <div css={warningTextStyle}>
-            <Text typography="t6" color="#FF6B6B">
+            <Text typography="t6" color={warningAlt}>
               조금 더 천천히 터치해주세요
             </Text>
           </div>

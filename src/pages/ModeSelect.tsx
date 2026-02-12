@@ -11,6 +11,8 @@ import {
   MISSION_INFO,
   MOOD_RECOMMENDED_MISSION,
 } from '../types';
+import { primary, primaryLight, primarySelected, primaryBorder, textPrimary, textSecondary, surfaceAlt, border } from '../styles/tokens';
+import { tapHighlightReset } from '../styles/mixins';
 
 const fadeSlideIn = keyframes`
   0% { opacity: 0; transform: translateY(16px); }
@@ -50,16 +52,16 @@ const missionListStyle = css`
 const missionCardStyle = (isSelected: boolean, isRecommended: boolean) => css`
   padding: 20px;
   border-radius: 16px;
-  border: 2px solid ${isSelected ? '#3182F6' : '#E5E8EB'};
-  background: ${isSelected ? '#F2F7FF' : '#fff'};
+  border: 2px solid ${isSelected ? primary : border};
+  background: ${isSelected ? primarySelected : '#fff'};
   cursor: pointer;
   transition: transform 0.2s ease-out, border-color 0.2s, background 0.2s;
   position: relative;
-  -webkit-tap-highlight-color: transparent;
+  ${tapHighlightReset}
 
   ${isRecommended && !isSelected && `
-    border-color: #B8D4FF;
-    background: #FAFCFF;
+    border-color: ${primaryBorder};
+    background: ${primarySelected};
   `}
 `;
 
@@ -68,7 +70,7 @@ const recommendBadgeStyle = css`
   top: 12px;
   right: 12px;
   padding: 4px 8px;
-  background: #3182F6;
+  background: ${primary};
   border-radius: 6px;
   animation: ${badgePulse} 2s ease-in-out infinite;
 `;
@@ -131,7 +133,7 @@ export default function ModeSelect() {
   return (
     <div css={containerStyle}>
       <div css={moodLabelStyle}>
-        <Text typography="t6" color="#6B7684">
+        <Text typography="t6" color={textSecondary}>
           {MOOD_LABELS[mood]}
         </Text>
       </div>
@@ -157,6 +159,8 @@ export default function ModeSelect() {
                 animatingMode === mode && css`transform: scale(0.97);`,
               ]}
               onClick={() => handleModeSelect(mode)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleModeSelect(mode); } }}
+              tabIndex={0}
               role="radio"
               aria-checked={isSelected}
               aria-label={`${info.label} - ${info.description}${isRecommended ? ' (추천)' : ''}`}
@@ -171,7 +175,7 @@ export default function ModeSelect() {
               <div css={missionCardContentStyle}>
                 <Asset.Frame
                   shape={Asset.frameShape.SquircleLarge}
-                  backgroundColor={isSelected ? '#E8F3FF' : '#F2F4F6'}
+                  backgroundColor={isSelected ? primaryLight : surfaceAlt}
                   content={<span css={missionIconEmojiStyle}>{info.icon}</span>}
                 />
                 <div css={missionTextStyle}>
@@ -179,12 +183,12 @@ export default function ModeSelect() {
                     <Text
                       typography="t4"
                       fontWeight="bold"
-                      color={isSelected ? '#3182F6' : '#333D4B'}
+                      color={isSelected ? primary : textPrimary}
                     >
                       {info.label}
                     </Text>
                   </div>
-                  <Text typography="t6" color="#6B7684">
+                  <Text typography="t6" color={textSecondary}>
                     {info.description}
                   </Text>
                 </div>

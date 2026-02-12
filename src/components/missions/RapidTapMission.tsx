@@ -1,8 +1,10 @@
 /** @jsxImportSource @emotion/react */
 import { css, keyframes } from '@emotion/react';
-import { useState, useRef, useCallback, useMemo, useEffect } from 'react';
+import { useState, useRef, useMemo, useCallback } from 'react';
 import { Text } from '@toss/tds-mobile';
-import { haptic } from '../../utils/haptic';
+import { RAPID_TAP_CONFIG } from '../../config/missionConfig';
+import { useRapidTapGame } from '../../hooks/useRapidTapGame';
+import { interactiveTapArea } from '../../styles/mixins';
 
 /* ───────── 키프레임 ───────── */
 
@@ -98,8 +100,7 @@ const craterStyle = (intensity: number) => css`
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
+  ${interactiveTapArea}
   position: relative;
   z-index: 2;
   transition: background 0.15s;
@@ -235,51 +236,6 @@ const encourageMsgAnimStyle = css`
   animation: ${fadeIn} 0.2s ease-out;
 `;
 
-/* ───────── 격려 메시지 ───────── */
-
-const ENCOURAGE_MESSAGES = [
-  '스트레스가 날아가고 있어요 💨',
-  '그 에너지 좋아요!',
-  '답답한 마음, 다 터뜨려요 💥',
-  '멈추지 말아요!',
-  '감정이 해방되고 있어요',
-  '한 번 더! 한 번 더! ✊',
-  '이 속도 최고예요',
-  '마음껏 발산해요 🔥',
-  '후련해지고 있어요',
-  '당신의 에너지가 폭발 중! ⚡',
-  '이 리듬 놓치지 마세요',
-  '스트레스 바이바이 👋',
-  '점점 가벼워지고 있어요',
-  '마음의 응어리가 풀리고 있어요',
-  '지금 이 순간을 느껴봐요 ✨',
-];
-
-function getRandomEncourage(prevIndex: number): [string, number] {
-  let idx: number;
-  do { idx = Math.floor(Math.random() * ENCOURAGE_MESSAGES.length); } while (idx === prevIndex);
-  return [ENCOURAGE_MESSAGES[idx], idx];
-}
-
-function getComboMessage(tps: number): string {
-  if (tps >= 8) return '미쳤다!!!🤯';
-  if (tps >= 6) return '불타오르는중🔥';
-  if (tps >= 4) return '대단해요!!';
-  if (tps >= 2) return '좋아요!';
-  return '';
-}
-
-/* ───────── 용암 균열 경로 ───────── */
-
-const CRACK_PATHS = [
-  'M110 50 Q105 80 115 110',
-  'M90 60 Q95 90 85 120',
-  'M130 55 Q120 85 130 115',
-  'M100 70 Q92 100 100 130',
-];
-
-const ERUPTION_COLORS = ['#FFC107', '#FFEB3B', '#FF6D00', '#FF8A65', '#D32F2F'];
-
 /* ───────── 타입 ───────── */
 
 interface RapidTapMissionProps {
@@ -292,22 +248,15 @@ interface FloatingNum { id: number; value: number; }
 
 /* ───────── 메인 컴포넌트 ───────── */
 
-export default function RapidTapMission({ onComplete, onIntensityChange }: RapidTapMissionProps) {
-  const [count, setCount] = useState(0);
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export default function RapidTapMission({ onComplete: _onComplete, onIntensityChange }: RapidTapMissionProps) {
+  const { count, intensity, tps, encourageMsg, showEruption, comboMessage, handleTap: gameHandleTap } = useRapidTapGame(onIntensityChange);
+
   const [ripples, setRipples] = useState<Ripple[]>([]);
   const [floatingNums, setFloatingNums] = useState<FloatingNum[]>([]);
-  const [tps, setTps] = useState(0);
-  const [intensity, setIntensity] = useState(0);
-  const [encourageMsg, setEncourageMsg] = useState('');
-  const [showEruption, setShowEruption] = useState(false);
 
   const rippleIdRef = useRef(0);
   const floatIdRef = useRef(0);
-  const tapTimestamps = useRef<number[]>([]);
-  const intensityDecayTimer = useRef<ReturnType<typeof setInterval> | null>(null);
-  const isCompleted = useRef(false);
-  const prevMsgIndexRef = useRef(-1);
-  const prevIntensityRef = useRef(0);
 
   // 화산재 파티클 데이터 (고정)
   const embers = useMemo(() =>
@@ -316,7 +265,7 @@ export default function RapidTapMission({ onComplete, onIntensityChange }: Rapid
       x: 20 + Math.random() * 60,
       duration: 1.5 + Math.random() * 1.5,
       delay: Math.random() * 2,
-      color: ERUPTION_COLORS[i % ERUPTION_COLORS.length],
+      color: RAPID_TAP_CONFIG.eruptionColors[i % RAPID_TAP_CONFIG.eruptionColors.length],
     }))
   , []);
 
@@ -325,63 +274,12 @@ export default function RapidTapMission({ onComplete, onIntensityChange }: Rapid
     Array.from({ length: 12 }, (_, i) => ({
       id: i,
       angle: (360 / 12) * i + Math.random() * 15,
-      color: ERUPTION_COLORS[Math.floor(Math.random() * ERUPTION_COLORS.length)],
+      color: RAPID_TAP_CONFIG.eruptionColors[Math.floor(Math.random() * RAPID_TAP_CONFIG.eruptionColors.length)],
     }))
   , []);
 
-  // intensity 변화 콜백
-  useEffect(() => {
-    if (Math.abs(intensity - prevIntensityRef.current) > 0.05) {
-      prevIntensityRef.current = intensity;
-      onIntensityChange?.(intensity);
-    }
-  }, [intensity, onIntensityChange]);
-
-  // intensity 감쇠 (100ms마다 -0.008 → 초당 -0.08)
-  if (!intensityDecayTimer.current) {
-    intensityDecayTimer.current = setInterval(() => {
-      setIntensity(prev => Math.max(0, prev - 0.008));
-      const now = Date.now();
-      tapTimestamps.current = tapTimestamps.current.filter(t => now - t < 1000);
-      setTps(tapTimestamps.current.length);
-    }, 100);
-  }
-
   const handleTap = useCallback(() => {
-    if (isCompleted.current) return;
-
-    const currentIntensity = intensity;
-    if (currentIntensity > 0.7) {
-      haptic.heavy();
-    } else if (currentIntensity > 0.5) {
-      haptic.medium();
-    } else {
-      haptic.tap();
-    }
-
-    const now = Date.now();
-    tapTimestamps.current.push(now);
-
-    setCount(prev => {
-      const next = prev + 1;
-      if (next % 50 === 0) haptic.success();
-      if (next % 10 === 0) {
-        const [msg, idx] = getRandomEncourage(prevMsgIndexRef.current);
-        prevMsgIndexRef.current = idx;
-        setEncourageMsg(msg);
-      }
-      return next;
-    });
-
-    setIntensity(prev => {
-      const next = Math.min(1, prev + 0.06);
-      // 폭발 이펙트 트리거
-      if (next > 0.85 && prev <= 0.85) {
-        setShowEruption(true);
-        setTimeout(() => setShowEruption(false), 800);
-      }
-      return next;
-    });
+    gameHandleTap();
 
     // 리플 이펙트
     const rippleId = rippleIdRef.current++;
@@ -391,7 +289,7 @@ export default function RapidTapMission({ onComplete, onIntensityChange }: Rapid
     }, 400);
 
     // 플로팅 숫자
-    const currentCount = tapTimestamps.current.filter(t => now - t < 1000).length;
+    const currentCount = tps;
     if (currentCount >= 3) {
       const floatId = floatIdRef.current++;
       setFloatingNums(prev => [...prev, { id: floatId, value: currentCount }]);
@@ -399,11 +297,7 @@ export default function RapidTapMission({ onComplete, onIntensityChange }: Rapid
         setFloatingNums(prev => prev.filter(f => f.id !== floatId));
       }, 600);
     }
-  }, [intensity]);
-
-  void onComplete;
-
-  const comboMessage = getComboMessage(tps);
+  }, [gameHandleTap, tps]);
 
   return (
     <div css={containerStyle(intensity)}>
@@ -448,7 +342,7 @@ export default function RapidTapMission({ onComplete, onIntensityChange }: Rapid
                 </feMerge>
               </filter>
             </defs>
-            {CRACK_PATHS.map((path, i) => (
+            {RAPID_TAP_CONFIG.crackPaths.map((path, i) => (
               <path
                 key={i}
                 d={path}

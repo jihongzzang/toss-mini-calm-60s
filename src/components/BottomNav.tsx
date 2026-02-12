@@ -4,11 +4,13 @@ import {useState, useEffect} from "react";
 import {useLocation, useNavigate} from "react-router-dom";
 import {Text, Asset} from "@toss/tds-mobile";
 import {SafeAreaInsets} from "@apps-in-toss/web-bridge";
+import { primary, textMuted, borderLight } from '../styles/tokens';
+import { tapHighlightReset } from '../styles/mixins';
 
 const wrapperStyle = css`
   flex-shrink: 0;
   background: #fff;
-  border-top: 1px solid #f0f0f0;
+  border-top: 1px solid ${borderLight};
 `;
 
 const navStyle = css`
@@ -26,7 +28,7 @@ const tabStyle = css`
   gap: 2px;
   height: 100%;
   cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
+  ${tapHighlightReset}
 `;
 
 const iconWrapStyle = css`
@@ -38,8 +40,8 @@ const iconWrapStyle = css`
   justify-content: center;
 `;
 
-const activeColor = "#3182F6";
-const inactiveColor = "#8B95A1";
+const activeColor = primary;
+const inactiveColor = textMuted;
 
 const TABS = [
   {label: "홈", path: "/", icon: "icon-home-mono"},

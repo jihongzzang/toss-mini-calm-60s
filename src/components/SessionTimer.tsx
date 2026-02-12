@@ -3,6 +3,7 @@ import { css, keyframes } from '@emotion/react';
 import { useState, useEffect, useRef } from 'react';
 import { Text } from '@toss/tds-mobile';
 import { haptic } from '../utils/haptic';
+import { primary, textPrimary, border, danger } from '../styles/tokens';
 
 const timerContainerStyle = css`
   display: flex;
@@ -96,7 +97,7 @@ export default function SessionTimer({
   const isWarning = remainingMs <= 10000;
   const strokeColor = isWarning
     ? `rgb(${Math.round(240 - (remainingMs / 10000) * (240 - 49))}, ${Math.round(68 + (remainingMs / 10000) * (130 - 68))}, ${Math.round(82 + (remainingMs / 10000) * (246 - 82))})`
-    : '#3182F6';
+    : primary;
 
   const viewBox = `0 0 ${size} ${size}`;
   const center = size / 2;
@@ -109,7 +110,7 @@ export default function SessionTimer({
           cy={center}
           r={radius}
           fill="none"
-          stroke="#E5E8EB"
+          stroke={border}
           strokeWidth="4"
         />
         <circle
@@ -131,7 +132,7 @@ export default function SessionTimer({
         <Text
           typography="t5"
           fontWeight="bold"
-          color={isWarning ? '#F04452' : '#333D4B'}
+          color={isWarning ? danger : textPrimary}
         >
           {timeStr}
         </Text>

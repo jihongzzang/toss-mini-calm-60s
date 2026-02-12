@@ -12,8 +12,8 @@ export default defineConfig({
     withHomeButton: true,
   },
   web: {
-    host: "192.168.100.18",
-    port: 3000,
+    host: "192.168.35.248",
+    port: 5173,
     commands: {
       dev: "vite --host",
       build: "tsc -b && vite build",

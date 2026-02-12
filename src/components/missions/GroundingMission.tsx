@@ -1,33 +1,11 @@
 /** @jsxImportSource @emotion/react */
 import { css, keyframes } from '@emotion/react';
-import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useMemo } from 'react';
 import { Text, ProgressBar } from '@toss/tds-mobile';
-import { haptic } from '../../utils/haptic';
-
-/* ───────── 선택지 풀 ───────── */
-
-const SEE_OPTIONS = [
-  '시계', '창문', '모니터', '책', '컵',
-  '손가락', '조명', '벽', '신발', '식물',
-  '가방', '충전기', '의자', '문', '포스터',
-];
-
-const HEAR_OPTIONS = [
-  '에어컨 소리', '키보드 소리', '새소리', '시계 소리', '바람 소리',
-  '숨소리', '자동차 소리', '발소리', '음악', '선풍기 소리',
-  '빗소리', '물 흐르는 소리',
-];
-
-const FEEL_OPTIONS = [
-  '발바닥의 바닥', '손 위의 공기', '의자에 닿는 등', '옷의 감촉', '손의 온기',
-  '머리카락', '입술의 감각', '심장 박동', '숨이 나가는 느낌',
-];
-
-/** 배열에서 랜덤 n개 추출 (셔플) */
-function pickRandom<T>(arr: T[], n: number): T[] {
-  const shuffled = [...arr].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, n);
-}
+import { GROUNDING_CONFIG } from '../../config/missionConfig';
+import { useGroundingGame } from '../../hooks/useGroundingGame';
+import { primary, primaryBorder, textPrimary, textSecondary, textMuted, border } from '../../styles/tokens';
+import { interactiveTapArea } from '../../styles/mixins';
 
 /* ───────── 키프레임 ───────── */
 
@@ -64,14 +42,6 @@ const glowPulse = keyframes`
   100% { box-shadow: 0 0 0 0 rgba(76, 175, 80, 0); }
 `;
 
-/* ───────── 섹션별 배경색 ───────── */
-
-const SECTION_COLORS: Record<string, string> = {
-  see: 'rgba(129, 199, 132, 0.06)',   // 연한 초록 — 시각
-  hear: 'rgba(165, 214, 167, 0.08)',   // 자연 초록 — 청각
-  feel: 'rgba(200, 230, 201, 0.10)',   // 따뜻한 초록 — 촉각
-};
-
 /* ───────── 스타일 ───────── */
 
 const containerStyle = (bgColor: string) => css`
@@ -105,7 +75,7 @@ const iconCircleStyle = (isActive: boolean, isCompleted: boolean) => css`
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  background: ${isCompleted ? '#4CAF50' : isActive ? '#3182F6' : '#E5E8EB'};
+  background: ${isCompleted ? '#4CAF50' : isActive ? primary : border};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -126,12 +96,11 @@ const chipGridStyle = css`
 const chipStyle = (isSelected: boolean, isActive: boolean) => css`
   padding: 10px 16px;
   border-radius: 20px;
-  border: 1.5px solid ${isSelected ? '#4CAF50' : isActive ? '#B8D4FF' : '#E5E8EB'};
+  border: 1.5px solid ${isSelected ? '#4CAF50' : isActive ? primaryBorder : border};
   background: ${isSelected ? '#F1F8E9' : '#fff'};
   cursor: ${isActive && !isSelected ? 'pointer' : 'default'};
   transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
+  ${interactiveTapArea}
   ${isSelected && `box-shadow: 0 1px 3px rgba(76, 175, 80, 0.15);`}
 
   ${isActive && !isSelected && `
@@ -145,7 +114,7 @@ const selectedCountStyle = css`
   margin-left: auto;
   padding: 2px 8px;
   border-radius: 10px;
-  background: #3182F6;
+  background: ${primary};
   min-width: 36px;
   text-align: center;
 `;
@@ -187,8 +156,6 @@ function AnimatedCheckIcon({ isChecked }: { isChecked: boolean }) {
   );
 }
 
-const BURST_COLORS = ['#4CAF50', '#81C784', '#FFD93D', '#6BCB77', '#A5D6A7'];
-
 function CelebrationBurst() {
   const dots = useMemo(() =>
     Array.from({ length: 10 }, (_, i) => ({
@@ -196,7 +163,7 @@ function CelebrationBurst() {
       dx: (Math.random() - 0.5) * 80,
       dy: (Math.random() - 0.5) * 80,
       size: 4 + Math.random() * 4,
-      color: BURST_COLORS[Math.floor(Math.random() * BURST_COLORS.length)],
+      color: GROUNDING_CONFIG.burstColors[Math.floor(Math.random() * GROUNDING_CONFIG.burstColors.length)],
       delay: Math.random() * 0.15,
     }))
   , []);
@@ -227,27 +194,6 @@ const encourageTextAnim = css`
   animation: ${fadeInUp} 0.3s ease-out;
 `;
 
-const ENCOURAGE_MESSAGES = [
-  '좋아요, 주변을 느끼고 있어요 🌿',
-  '감각이 깨어나고 있어요',
-  '지금 이 순간에 머물러 봐요',
-  '잘하고 있어요, 계속 해봐요',
-  '마음이 차분해지고 있어요 ✨',
-  '하나씩 찾아가고 있어요',
-  '집중하는 모습이 멋져요',
-  '주변이 더 선명하게 느껴지나요?',
-  '감각에 집중하면 마음이 편해져요',
-  '지금 여기, 이 공간을 느껴봐요 🍃',
-  '작은 것들이 보이기 시작해요',
-  '당신은 안전한 곳에 있어요',
-];
-
-function getRandomEncourage(prevIndex: number): [string, number] {
-  let idx: number;
-  do { idx = Math.floor(Math.random() * ENCOURAGE_MESSAGES.length); } while (idx === prevIndex);
-  return [ENCOURAGE_MESSAGES[idx], idx];
-}
-
 /* ───────── 타입 ───────── */
 
 interface GroundingMissionProps {
@@ -255,126 +201,23 @@ interface GroundingMissionProps {
   onSectionChange?: (section: string) => void;
 }
 
-interface SectionData {
-  id: string;
-  title: string;
-  icon: string;
-  required: number;          // 선택해야 하는 개수
-  options: string[];         // 표시할 선택지 (랜덤 추출된)
-  selected: Set<string>;     // 선택된 것들
-}
-
 /* ───────── 메인 컴포넌트 ───────── */
 
 export default function GroundingMission({ onComplete, onSectionChange }: GroundingMissionProps) {
-  // 최초 마운트 시 선택지 랜덤 생성 (리렌더링에도 유지)
-  const [sections, setSections] = useState<SectionData[]>(() => [
-    {
-      id: 'see',
-      title: '보이는 것 3개',
-      icon: '👁️',
-      required: 3,
-      options: pickRandom(SEE_OPTIONS, 6),
-      selected: new Set(),
-    },
-    {
-      id: 'hear',
-      title: '들리는 것 2개',
-      icon: '👂',
-      required: 2,
-      options: pickRandom(HEAR_OPTIONS, 5),
-      selected: new Set(),
-    },
-    {
-      id: 'feel',
-      title: '느껴지는 것 1개',
-      icon: '✋',
-      required: 1,
-      options: pickRandom(FEEL_OPTIONS, 4),
-      selected: new Set(),
-    },
-  ]);
+  const {
+    sections,
+    activeSection,
+    sectionJustActivated,
+    celebratingSections,
+    animatingChip,
+    encourageMsg,
+    totalSelected,
+    totalRequired,
+    progress,
+    handleSelect,
+  } = useGroundingGame(onComplete, onSectionChange);
 
-  const [celebratingSections, setCelebratingSections] = useState<Set<string>>(new Set());
-  const [animatingChip, setAnimatingChip] = useState<string | null>(null);
-  const [encourageMsg, setEncourageMsg] = useState('');
-  const prevActiveSectionRef = useRef<string | null>(null);
-  const prevMsgIndexRef = useRef(-1);
-
-  const totalRequired = 6; // 3 + 2 + 1
-  const totalSelected = sections.reduce((acc, s) => acc + s.selected.size, 0);
-  const progress = totalSelected / totalRequired;
-
-  const getActiveSection = useCallback(() => {
-    for (const section of sections) {
-      if (section.selected.size < section.required) {
-        return section.id;
-      }
-    }
-    return null;
-  }, [sections]);
-
-  const activeSection = getActiveSection();
-
-  // 섹션 전환 감지
-  const sectionJustActivated = activeSection !== prevActiveSectionRef.current;
-  useEffect(() => {
-    if (activeSection && activeSection !== prevActiveSectionRef.current) {
-      onSectionChange?.(activeSection);
-    }
-    prevActiveSectionRef.current = activeSection;
-  }, [activeSection, onSectionChange]);
-
-  const handleSelect = (sectionId: string, option: string) => {
-    haptic.tap();
-    setAnimatingChip(`${sectionId}-${option}`);
-    setTimeout(() => setAnimatingChip(null), 300);
-
-    // 격려 메시지 업데이트
-    const [msg, idx] = getRandomEncourage(prevMsgIndexRef.current);
-    prevMsgIndexRef.current = idx;
-    setEncourageMsg(msg);
-
-    setSections(prev => {
-      const updated = prev.map(section => {
-        if (section.id !== sectionId) return section;
-        // 이미 필요한 개수를 채웠으면 무시
-        if (section.selected.size >= section.required) return section;
-        // 이미 선택된 건 무시 (토글 해제 없음 — 집중 유도)
-        if (section.selected.has(option)) return section;
-
-        const nextSelected = new Set(section.selected);
-        nextSelected.add(option);
-        return { ...section, selected: nextSelected };
-      });
-
-      // 섹션 완료 체크
-      const section = updated.find(s => s.id === sectionId);
-      if (section && section.selected.size === section.required) {
-        haptic.success();
-        setCelebratingSections(prev => new Set(prev).add(sectionId));
-        setTimeout(() => {
-          setCelebratingSections(prev => {
-            const next = new Set(prev);
-            next.delete(sectionId);
-            return next;
-          });
-        }, 700);
-      }
-
-      return updated;
-    });
-  };
-
-  // 전체 완료 감지
-  useEffect(() => {
-    if (totalSelected >= totalRequired) {
-      haptic.success();
-      onComplete();
-    }
-  }, [totalSelected, onComplete]);
-
-  const bgColor = activeSection ? (SECTION_COLORS[activeSection] || '#fff') : '#fff';
+  const bgColor = activeSection ? (GROUNDING_CONFIG.sectionColors[activeSection] || '#fff') : '#fff';
 
   return (
     <div css={containerStyle(bgColor)}>
@@ -386,7 +229,7 @@ export default function GroundingMission({ onComplete, onSectionChange }: Ground
             </Text>
           </div>
         ) : (
-          <Text typography="t4" fontWeight="medium" color="#333D4B">
+          <Text typography="t4" fontWeight="medium" color={textPrimary}>
             주변을 느끼며 마음을 가라앉혀 봐요
           </Text>
         )}
@@ -411,7 +254,7 @@ export default function GroundingMission({ onComplete, onSectionChange }: Ground
               <Text
                 typography="t5"
                 fontWeight="bold"
-                color={isCompleted ? '#4CAF50' : isActive ? '#333D4B' : '#8B95A1'}
+                color={isCompleted ? '#4CAF50' : isActive ? textPrimary : textMuted}
               >
                 {section.title}
               </Text>
@@ -457,7 +300,7 @@ export default function GroundingMission({ onComplete, onSectionChange }: Ground
                     <Text
                       typography="t6"
                       fontWeight={isSelected ? 'bold' : 'medium'}
-                      color={isSelected ? '#2E7D32' : isActive ? '#333D4B' : '#8B95A1'}
+                      color={isSelected ? '#2E7D32' : isActive ? textPrimary : textMuted}
                     >
                       {option}
                     </Text>
@@ -470,7 +313,7 @@ export default function GroundingMission({ onComplete, onSectionChange }: Ground
       })}
 
       <div css={progressContainerStyle}>
-        <Text typography="t7" color="#6B7684" style={{ marginBottom: 8, display: 'block' }}>
+        <Text typography="t7" color={textSecondary} style={{ marginBottom: 8, display: 'block' }}>
           {totalSelected} / {totalRequired} 완료
         </Text>
         <ProgressBar progress={progress} size="normal" />

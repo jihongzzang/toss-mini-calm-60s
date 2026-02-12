@@ -1,8 +1,10 @@
 /** @jsxImportSource @emotion/react */
 import { css, keyframes } from '@emotion/react';
-import { useState, useEffect, useRef, useCallback } from 'react';
 import { Text, ProgressBar } from '@toss/tds-mobile';
-import { haptic } from '../../utils/haptic';
+import { HOLD_RELEASE_CONFIG } from '../../config/missionConfig';
+import { useHoldReleaseGame, type Phase } from '../../hooks/useHoldReleaseGame';
+import { textPrimary, textMuted } from '../../styles/tokens';
+import { interactiveTapArea } from '../../styles/mixins';
 
 /* ───────── 키프레임 ───────── */
 
@@ -69,8 +71,7 @@ const plantContainerStyle = (scale: number) => css`
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
+  ${interactiveTapArea}
   transform: scale(${scale});
   transition: transform 0.1s linear;
   flex-shrink: 0;
@@ -130,37 +131,9 @@ const progressContainerStyle = css`
   width: 100%;
 `;
 
-/* ───────── 격려 메시지 ───────── */
+/* ───────── 컬러 (config) ───────── */
 
-const ENCOURAGE_MESSAGES = [
-  '새싹이 자라고 있어요 🌱',
-  '잘하고 있어요, 이 느낌 그대로',
-  '몸이 이완되고 있어요',
-  '마음이 한결 가벼워지고 있어요',
-  '숨이 편안해지고 있어요 ✨',
-  '긴장이 녹고 있어요',
-  '깊은 고요함이 찾아와요',
-  '한 걸음 더 성장하고 있어요',
-  '내 안의 평화를 느껴봐요',
-  '좋은 리듬이에요 🌿',
-  '마음의 짐을 내려놓는 중이에요',
-  '이 순간에만 집중해 봐요',
-  '당신의 시간이에요 🍃',
-  '천천히, 자연스럽게',
-  '꽃이 피어나고 있어요 🌸',
-];
-
-function getRandomMessage(prevIndex: number): [string, number] {
-  let idx: number;
-  do { idx = Math.floor(Math.random() * ENCOURAGE_MESSAGES.length); } while (idx === prevIndex);
-  return [ENCOURAGE_MESSAGES[idx], idx];
-}
-
-/* ───────── 컬러 ───────── */
-
-const FLOWER_COLORS = ['#F48FB1', '#CE93D8', '#FFB74D', '#81C784', '#90CAF9', '#FFAB91', '#80DEEA', '#A5D6A7', '#EF9A9A', '#B39DDB'];
-const LEAF_GREEN = '#66BB6A';
-const STEM_GREEN = '#4CAF50';
+const { flowerColors, leafGreen, stemGreen, targetCount } = HOLD_RELEASE_CONFIG;
 
 /* ───────── 서브 컴포넌트 ───────── */
 
@@ -173,7 +146,7 @@ function PlantSVG({
   flowerScale,
 }: {
   holdProgress: number;
-  phase: 'ready' | 'holding' | 'releasing';
+  phase: Phase;
   count: number;
   showBloomed: boolean;
   flowerScale: number;
@@ -184,7 +157,7 @@ function PlantSVG({
   const showLeftLeaf = holdProgress > 0.4 && isGrowing;
   const showRightLeaf = holdProgress > 0.7 && isGrowing;
   const showFlower = phase === 'releasing' || showBloomed;
-  const flowerColor = FLOWER_COLORS[count % FLOWER_COLORS.length];
+  const flowerColor = flowerColors[count % flowerColors.length];
 
   return (
     <svg width="180" height="220" viewBox="0 0 180 220">
@@ -196,7 +169,7 @@ function PlantSVG({
       {/* 줄기 */}
       <line
         x1="90" y1="180" x2="90" y2={180 - stemLength}
-        stroke={STEM_GREEN}
+        stroke={stemGreen}
         strokeWidth="3"
         strokeLinecap="round"
         strokeDasharray={stemLength}
@@ -215,7 +188,7 @@ function PlantSVG({
       >
         <path
           d="M90 140 Q70 130 73 114 Q83 123 90 140"
-          fill={LEAF_GREEN}
+          fill={leafGreen}
         />
       </g>
 
@@ -230,7 +203,7 @@ function PlantSVG({
       >
         <path
           d="M90 118 Q110 108 107 92 Q97 100 90 118"
-          fill={LEAF_GREEN}
+          fill={leafGreen}
           opacity="0.85"
         />
       </g>
@@ -276,8 +249,8 @@ function MiniFlower({ color, delay }: { color: string; delay: number }) {
   return (
     <div css={miniPlantStyle(delay)}>
       <svg width="20" height="28" viewBox="0 0 20 28">
-        <line x1="10" y1="28" x2="10" y2="12" stroke={STEM_GREEN} strokeWidth="1.5" strokeLinecap="round" />
-        <path d="M10 16 Q5 12 7 9" stroke={LEAF_GREEN} strokeWidth="1" fill="none" />
+        <line x1="10" y1="28" x2="10" y2="12" stroke={stemGreen} strokeWidth="1.5" strokeLinecap="round" />
+        <path d="M10 16 Q5 12 7 9" stroke={leafGreen} strokeWidth="1" fill="none" />
         {[0, 72, 144, 216, 288].map((angle, i) => (
           <ellipse
             key={i}
@@ -302,127 +275,15 @@ interface HoldReleaseMissionProps {
   onComplete: () => void;
 }
 
-const TARGET_COUNT = 10;
-const HOLD_DURATION = 4000;
-const RELEASE_DURATION = 2000;
-
-type Phase = 'ready' | 'holding' | 'releasing';
-
 /* ───────── 메인 컴포넌트 ───────── */
 
 export default function HoldReleaseMission({ onComplete }: HoldReleaseMissionProps) {
-  const [count, setCount] = useState(0);
-  const [phase, setPhase] = useState<Phase>('ready');
-  const [holdProgress, setHoldProgress] = useState(0);
-  const [releaseProgress, setReleaseProgress] = useState(0);
-  const [animateCount, setAnimateCount] = useState(false);
-  const [encourageMsg, setEncourageMsg] = useState('');
-  const [showBloomed, setShowBloomed] = useState(false);
-
-  const holdStartTime = useRef<number>(0);
-  const releaseStartTime = useRef<number>(0);
-  const animationFrame = useRef<number>(0);
-  const hapticInterval = useRef<ReturnType<typeof setInterval> | null>(null);
-  const bloomedTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const prevMsgIndexRef = useRef(-1);
-
-  const progress = count / TARGET_COUNT;
-  const flowerScale = showBloomed ? 1 : (phase === 'releasing' ? releaseProgress : 0);
-
-  const updateHoldProgress = useCallback(() => {
-    const elapsed = Date.now() - holdStartTime.current;
-    const newProgress = Math.min(elapsed / HOLD_DURATION, 1);
-    setHoldProgress(newProgress);
-
-    if (newProgress >= 1) {
-      setPhase('releasing');
-      releaseStartTime.current = Date.now();
-      if (hapticInterval.current) clearInterval(hapticInterval.current);
-      haptic.release();
-      animationFrame.current = requestAnimationFrame(updateReleaseProgress);
-    } else {
-      animationFrame.current = requestAnimationFrame(updateHoldProgress);
-    }
-  }, []);
-
-  const updateReleaseProgress = useCallback(() => {
-    const elapsed = Date.now() - releaseStartTime.current;
-    const newProgress = Math.min(elapsed / RELEASE_DURATION, 1);
-    setReleaseProgress(newProgress);
-
-    if (newProgress >= 1) {
-      setCount(prev => prev + 1);
-      setAnimateCount(true);
-      setTimeout(() => setAnimateCount(false), 300);
-
-      const [msg, idx] = getRandomMessage(prevMsgIndexRef.current);
-      prevMsgIndexRef.current = idx;
-      setEncourageMsg(msg);
-
-      // 만개된 꽃을 800ms 동안 보여준 뒤 리셋
-      setShowBloomed(true);
-      bloomedTimeout.current = setTimeout(() => {
-        setShowBloomed(false);
-        setPhase('ready');
-        setHoldProgress(0);
-        setReleaseProgress(0);
-      }, 800);
-    } else {
-      animationFrame.current = requestAnimationFrame(updateReleaseProgress);
-    }
-  }, []);
-
-  const handlePressStart = useCallback(() => {
-    if (phase !== 'ready' || showBloomed) return;
-
-    setPhase('holding');
-    holdStartTime.current = Date.now();
-    haptic.medium();
-    animationFrame.current = requestAnimationFrame(updateHoldProgress);
-
-    hapticInterval.current = setInterval(() => {
-      haptic.light();
-    }, 500);
-  }, [phase, showBloomed, updateHoldProgress]);
-
-  const handlePressEnd = useCallback(() => {
-    if (phase === 'holding') {
-      cancelAnimationFrame(animationFrame.current);
-      if (hapticInterval.current) clearInterval(hapticInterval.current);
-      setPhase('ready');
-      setHoldProgress(0);
-    }
-  }, [phase]);
-
-  useEffect(() => {
-    if (count >= TARGET_COUNT) {
-      haptic.success();
-      onComplete();
-    }
-  }, [count, onComplete]);
-
-  useEffect(() => {
-    return () => {
-      cancelAnimationFrame(animationFrame.current);
-      if (hapticInterval.current) clearInterval(hapticInterval.current);
-      if (bloomedTimeout.current) clearTimeout(bloomedTimeout.current);
-    };
-  }, []);
-
-  const getGuideText = () => {
-    switch (phase) {
-      case 'ready': return '화분을 꾹 눌러봐요';
-      case 'holding': return `새싹이 자라는 중... ${Math.ceil((HOLD_DURATION - holdProgress * HOLD_DURATION) / 1000)}초`;
-      case 'releasing': return '꽃이 피어나요... 🌸';
-    }
-  };
-
-  // 호흡 스케일
-  const breathScale = phase === 'holding'
-    ? 1 + 0.12 * holdProgress
-    : phase === 'releasing'
-    ? 1.12 - 0.12 * releaseProgress
-    : 1;
+  const {
+    count, phase, holdProgress, animateCount,
+    encourageMsg, showBloomed, progress, flowerScale, breathScale,
+    guideText,
+    handlePressStart, handlePressEnd,
+  } = useHoldReleaseGame(onComplete);
 
   return (
     <div css={containerStyle}>
@@ -435,8 +296,8 @@ export default function HoldReleaseMission({ onComplete }: HoldReleaseMissionPro
             </Text>
           </div>
         ) : (
-          <Text typography="t5" fontWeight="medium" color={phase === 'holding' ? '#4CAF50' : phase === 'releasing' ? '#F48FB1' : '#333D4B'}>
-            {getGuideText()}
+          <Text typography="t5" fontWeight="medium" color={phase === 'holding' ? '#4CAF50' : phase === 'releasing' ? '#F48FB1' : textPrimary}>
+            {guideText}
           </Text>
         )}
       </div>
@@ -451,7 +312,7 @@ export default function HoldReleaseMission({ onComplete }: HoldReleaseMissionPro
           onTouchStart={handlePressStart}
           onTouchEnd={handlePressEnd}
           role="button"
-          aria-label={`꾹 누르기 ${count}/${TARGET_COUNT}`}
+          aria-label={`꾹 누르기 ${count}/${targetCount}`}
         >
           <PlantSVG
             holdProgress={holdProgress}
@@ -462,12 +323,12 @@ export default function HoldReleaseMission({ onComplete }: HoldReleaseMissionPro
           />
           <div css={countOverlayStyle}>
             <div css={countAnimStyle(animateCount)}>
-              <Text typography="t2" fontWeight="bold" color={phase === 'holding' ? '#4CAF50' : '#333D4B'}>
+              <Text typography="t2" fontWeight="bold" color={phase === 'holding' ? '#4CAF50' : textPrimary}>
                 {count}
               </Text>
             </div>
-            <Text typography="t7" color="#8B95A1">
-              / {TARGET_COUNT}
+            <Text typography="t7" color={textMuted}>
+              / {targetCount}
             </Text>
           </div>
         </div>
@@ -477,8 +338,8 @@ export default function HoldReleaseMission({ onComplete }: HoldReleaseMissionPro
           <span css={phaseIconStyle(phase === 'ready', false)}>🌰</span>
           <span css={phaseIconStyle(phase === 'holding', phase === 'releasing')}>🌱</span>
           <span css={phaseIconStyle(phase === 'releasing', false)}>🌸</span>
-          <Text typography="t6" color="#8B95A1">
-            {TARGET_COUNT - count}회 남음
+          <Text typography="t6" color={textMuted}>
+            {targetCount - count}회 남음
           </Text>
         </div>
       </div>
@@ -488,7 +349,7 @@ export default function HoldReleaseMission({ onComplete }: HoldReleaseMissionPro
         {count > 0 && (
           <div css={gardenStyle}>
             {Array.from({ length: count }, (_, i) => (
-              <MiniFlower key={i} color={FLOWER_COLORS[i % FLOWER_COLORS.length]} delay={0} />
+              <MiniFlower key={i} color={flowerColors[i % flowerColors.length]} delay={0} />
             ))}
           </div>
         )}

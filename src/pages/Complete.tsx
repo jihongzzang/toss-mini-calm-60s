@@ -6,6 +6,8 @@ import {Text, Button, Asset} from "@toss/tds-mobile";
 import {recordCompletion} from "../stores/storage";
 import {haptic} from "../utils/haptic";
 import {Mood, MissionMode, CompleteAction, COMPLETE_ACTIONS} from "../types";
+import { primary, primaryLight, primarySelected, primaryBorder, textPrimary, textSecondary, textMuted, surface, border, warningAlt } from '../styles/tokens';
+import { tapHighlightReset } from '../styles/mixins';
 
 const circleScaleIn = keyframes`
   0% { transform: scale(0.5); opacity: 0; }
@@ -84,14 +86,14 @@ const actionListStyle = css`
 const actionItemStyle = (isSelected: boolean) => css`
   padding: 16px 20px;
   border-radius: 12px;
-  border: 1.5px solid ${isSelected ? "#3182F6" : "#E5E8EB"};
-  background: ${isSelected ? "#F2F7FF" : "#fff"};
+  border: 1.5px solid ${isSelected ? primary : border};
+  background: ${isSelected ? primarySelected : "#fff"};
   display: flex;
   align-items: center;
   gap: 12px;
   cursor: pointer;
-  transition: all 0.2s;
-  -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.2s, background 0.2s, transform 0.2s;
+  ${tapHighlightReset}
 
   &:active {
     transform: scale(0.98);
@@ -110,14 +112,14 @@ const radioStyle = (isSelected: boolean) => css`
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  border: 2px solid ${isSelected ? "#3182F6" : "#E5E8EB"};
-  background: ${isSelected ? "#3182F6" : "#fff"};
+  border: 2px solid ${isSelected ? primary : border};
+  background: ${isSelected ? primary : "#fff"};
   display: flex;
   align-items: center;
   justify-content: center;
   margin-left: auto;
   flex-shrink: 0;
-  transition: all 0.2s;
+  transition: border-color 0.2s, background 0.2s;
 `;
 
 const ctaContainerStyle = css`
@@ -134,7 +136,7 @@ const ACTION_ICONS: Record<CompleteAction, string> = {
   walk: "👟",
 };
 
-const CONFETTI_COLORS = ["#3182F6", "#FF6B6B", "#FFD93D", "#6BCB77", "#B8D4FF"];
+const CONFETTI_COLORS = [primary, warningAlt, "#FFD93D", "#6BCB77", primaryBorder];
 
 function Confetti() {
   const particles = useMemo(
@@ -232,7 +234,7 @@ export default function Complete() {
     <div css={containerStyle}>
       <div css={successAreaStyle}>
         <div css={successIconStyle}>
-          <Asset.Icon name="icon-check-circle-mono" color="#3182F6" frameShape={{width: 80, height: 80, radius: 9999}} backgroundColor="#E8F3FF" />
+          <Asset.Icon name="icon-check-circle-mono" color={primary} frameShape={{width: 80, height: 80, radius: 9999}} backgroundColor={primaryLight} />
         </div>
         <Confetti />
       </div>
@@ -241,16 +243,16 @@ export default function Complete() {
         <Text typography="t2" fontWeight="bold">
           좋아요, 여기까지 완료!
         </Text>
-        <Text typography="t5" color="#6B7684" style={{marginTop: 8}}>
+        <Text typography="t5" color={textSecondary} style={{marginTop: 8}}>
           60초 동안 잘 집중했어요
         </Text>
       </div>
 
       <div css={sectionStyle}>
-        <Text typography="t5" fontWeight="medium" color="#333D4B">
+        <Text typography="t5" fontWeight="medium" color={textPrimary}>
           마무리로 뭘 해볼까요?
         </Text>
-        <Text typography="t7" color="#8B95A1" style={{marginTop: 4, paddingLeft: 4}}>
+        <Text typography="t7" color={textMuted} style={{marginTop: 4, paddingLeft: 4}}>
           선택하지 않아도 괜찮아요
         </Text>
 
@@ -266,19 +268,21 @@ export default function Complete() {
                   `,
               ]}
               onClick={() => handleActionSelect(action)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleActionSelect(action); } }}
+              tabIndex={0}
               role="radio"
               aria-checked={selectedAction === action}
               aria-label={`${ACTION_ICONS[action]} ${COMPLETE_ACTIONS[action]}`}
             >
               <Asset.Frame
                 shape={Asset.frameShape.CircleLarge}
-                backgroundColor={selectedAction === action ? "#E8F3FF" : "#F8F9FA"}
+                backgroundColor={selectedAction === action ? primaryLight : surface}
                 content={<span css={actionIconEmojiStyle}>{ACTION_ICONS[action]}</span>}
               />
               <Text
                 typography="t5"
                 fontWeight={selectedAction === action ? "bold" : "medium"}
-                color={selectedAction === action ? "#3182F6" : "#333D4B"}
+                color={selectedAction === action ? primary : textPrimary}
               >
                 {COMPLETE_ACTIONS[action]}
               </Text>
