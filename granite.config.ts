@@ -7,6 +7,10 @@ export default defineConfig({
     primaryColor: "#0064FF",
     icon: "https://static.toss.im/appsintoss/3969/4fa5cff9-00ab-4692-ac8e-0d4861c36ce0.png",
   },
+  navigationBar: {
+    withBackButton: true,
+    withHomeButton: true,
+  },
   web: {
     host: "192.168.100.18",
     port: 3000,

@@ -32,21 +32,8 @@ const containerStyle = css`
   flex-direction: column;
 `;
 
-const headerStyle = css`
-  display: flex;
-  align-items: center;
+const moodLabelStyle = css`
   margin-bottom: 32px;
-`;
-
-const backButtonStyle = css`
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  margin-right: 8px;
-  -webkit-tap-highlight-color: transparent;
 `;
 
 const titleStyle = css`
@@ -143,14 +130,7 @@ export default function ModeSelect() {
 
   return (
     <div css={containerStyle}>
-      <div css={headerStyle}>
-        <div css={backButtonStyle} onClick={() => navigate(-1)} role="button" aria-label="뒤로 가기">
-          <Asset.Icon
-            name="icon-arrow-left-mono"
-            color="#333D4B"
-            frameShape={Asset.frameShape.CleanW24}
-          />
-        </div>
+      <div css={moodLabelStyle}>
         <Text typography="t6" color="#6B7684">
           {MOOD_LABELS[mood]}
         </Text>
