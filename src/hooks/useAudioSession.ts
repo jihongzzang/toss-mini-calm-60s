@@ -66,16 +66,22 @@ export function useAudioSession(mode: MissionMode) {
     initSound();
   }, [initSound]);
 
-  /* ── 백그라운드 → 포그라운드 복귀 시 AudioContext resume ── */
+  /* ── 백그라운드 ↔ 포그라운드 전환 시 사운드 처리 ── */
+  const wasPlayingRef = useRef(false);
+
   useEffect(() => {
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible' && !isMuted) {
-        // suspended 상태면 resume
-        ambientSound.init().then((ok) => {
-          if (ok && !soundInitialized.current) {
-            initSound();
-          }
-        });
+      if (document.visibilityState === 'hidden') {
+        // 백그라운드 진입: 재생 중이었는지 기록 후 즉시 정지
+        wasPlayingRef.current = soundInitialized.current && !isMuted;
+        ambientSound.stopAll(0);
+        ambientSound.reset();
+        soundInitialized.current = false;
+      } else if (document.visibilityState === 'visible') {
+        // 포그라운드 복귀: 이전에 재생 중이었으면 사운드 재시작
+        if (wasPlayingRef.current && !isMuted) {
+          initSound();
+        }
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
